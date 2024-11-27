@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  customer-service:
+    build: ./microservices/customer-service
+    ports:
+      - "3001:3001"
+    networks:
+      - app_network
+  distributor-service:
+    build: ./microservices/distributor-service
+    ports:
+      - "3002:3002"
+    networks:
+      - app_network
+  inventory-service:
+    build: ./microservices/inventory-service
+    ports:
+      - "3003:3003"
+    networks:
+      - app_network
+  order-service:
+    build: ./microservices/order-service
+    ports:
+      - "3004:3004"
+    networks:
+      - app_network
+  geolocation-service:
+    build: ./microservices/geolocation-service
+    ports:
+      - "3005:3005"
+    networks:
+      - app_network
+  web-app:
+    build: ./apps/web-app
+    ports:
+      - "8080:8080"
+    networks:
+      - app_network
+  mobile-app:
+    build: ./apps/mobile-app
+    ports:
+      - "8100:8100"
+    networks:
+      - app_network
+networks:
+  app_network:
+    driver: bridge
