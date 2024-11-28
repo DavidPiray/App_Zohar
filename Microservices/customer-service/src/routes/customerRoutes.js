@@ -24,13 +24,13 @@ const verifyToken = require('../middleware/auth');
  *         schema:
  *           type: integer
  *           example: 1
- *         description: Número de la página (por defecto: 1)
+ *         description: "Número de la página (por defecto: 1)"
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           example: 10
- *         description: Número de registros por página (por defecto: 10)
+ *         description: "Número de registros por página (por defecto: 10)"
  *     responses:
  *       200:
  *         description: Lista de clientes con paginación
@@ -41,13 +41,10 @@ const verifyToken = require('../middleware/auth');
  *               properties:
  *                 page:
  *                   type: integer
- *                   example: 1
  *                 limit:
  *                   type: integer
- *                   example: 10
  *                 total:
  *                   type: integer
- *                   example: 2
  *                 customers:
  *                   type: array
  *                   items:

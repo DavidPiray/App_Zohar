@@ -1,8 +1,9 @@
+const db = require('../../src/services/firebase');
 const request = require('supertest');
 const app = require('../../src/app'); // Asegúrate de exportar la app en app.js
-const token = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjNmZDA3MmRmYTM4MDU2NzlmMTZmZTQxNzM4YzJhM2FkM2Y5MGIyMTQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vYXBwem9oYXItNmU5M2MiLCJhdWQiOiJhcHB6b2hhci02ZTkzYyIsImF1dGhfdGltZSI6MTczMjgxMzM5OSwidXNlcl9pZCI6InNNdjNGRmNoSVBhb2czcmFGVDVKUHZVRlp3WDIiLCJzdWIiOiJzTXYzRkZjaElQYW9nM3JhRlQ1SlB2VUZad1gyIiwiaWF0IjoxNzMyODEzMzk5LCJleHAiOjE3MzI4MTY5OTksImVtYWlsIjoicHJ1ZWJhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7ImVtYWlsIjpbInBydWViYUBleGFtcGxlLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.kq7_tmdRk1gpzBl2mtyj1JP5XsA_zqP5fIm-JWLqnIbc9-0P7-IoWcX4r8-I9Zke-MCPCqbFYqI9fHC4tJg5xKxUifq_DErIT4Bsvc2GVdywtYTUeR-cuEUFR3UZ8Smd4jXFAnGcV5PVIWL4rMfgNCkRVLQmTM0iCyDeAUKSSdtu5WEd9PKijk39ZZduFws2WhKmMHEwuegWjeF1riCxkf3bLwcz1FfRLoCzAOurup6n5spSxa4IVA7v3ITCz6q5MoQ0myzNJdfTDTc_3WyFVrsnGCdzEPg6YAqlNQKcy9FP_F_867BONWuNRaGpqj-bbXwcFLy7eVwdebbuhD8VlQ'
-const userDelete = 'XaCVDWjviADeAJ0oMb1L'
-const userUpdate = 'EEtQhiWZ5P9tz6JTW7tI'
+const token = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjNmZDA3MmRmYTM4MDU2NzlmMTZmZTQxNzM4YzJhM2FkM2Y5MGIyMTQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vYXBwem9oYXItNmU5M2MiLCJhdWQiOiJhcHB6b2hhci02ZTkzYyIsImF1dGhfdGltZSI6MTczMjgyNjc5NCwidXNlcl9pZCI6InNNdjNGRmNoSVBhb2czcmFGVDVKUHZVRlp3WDIiLCJzdWIiOiJzTXYzRkZjaElQYW9nM3JhRlQ1SlB2VUZad1gyIiwiaWF0IjoxNzMyODI2Nzk0LCJleHAiOjE3MzI4MzAzOTQsImVtYWlsIjoicHJ1ZWJhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7ImVtYWlsIjpbInBydWViYUBleGFtcGxlLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.UTXhFF2V6oj4E9ao2ennn0ablChJZC4kV_ac4thrIamSz8gz_gSHEakq9n2DD7NSmghfovmbtylCQTsVo3tFpEDuVfBzTMnnmW2iUIlNXwjAedouqD747uLEEALUJHm_IBa19W7pjKNbiYTaw8_W7xFonM66tYiSEqsVgdAVmNtNJw_cxJfPMl6kK5LXREjw2xz-Riq3Ouh1MfqAPLtmsHLRT5VhTx_WKh4hSsMri9tS1r9yRJaq1cIFMGv7DoYv9pEqYUX0n1VmkIx15Sp16nvgSB4MmllbjYSYVvhMujjWfPvv0b1-FftWSVgLaWfqa_r4XluuuVTSMMZCEunJNg'
+const userDelete = 'EEtQhiWZ5P9tz6JTW7tI'
+const userUpdate = '4hhs02E9n5fZatuDquxB'
 
 describe('Customer Service API', () => {
 
@@ -23,7 +24,7 @@ describe('Customer Service API', () => {
   it('POST /api/customers should create a new customer', async () => {
     const newCustomer = {
       nombre: "Juan Pérez",
-      email: "carlos@example.com",
+      email: "juan.perez@example.com",
       direccion: "Calle Ficticia 123",
       celular: "+593987654321",
       zonaID: "Zona Norte 1",
@@ -89,5 +90,16 @@ describe('Customer Service API', () => {
   
     expect(response.body).toHaveProperty('message', 'No se encontraron clientes');
   });
+
+  afterAll(async () => {
+    if (app && app.close) {
+      await app.close();
+    }
+  
+    if (db && typeof db.terminate === 'function') {
+      await db.terminate();
+    }
+  });
+  
   
 });

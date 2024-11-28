@@ -2,6 +2,33 @@ const db = require('../services/firebase');
 const Joi = require('joi');
 const redis = require('../services/redis');
 
+// Devolver todos los clientes
+exports.getAllCustomers = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1; // Página predeterminada: 1
+    const limit = parseInt(req.query.limit, 10) || 10; // Límite predeterminado: 10
+    const offset = (page - 1) * limit;
+
+    const snapshot = await db.collection('clientes')
+      .orderBy('createdAt')
+      .offset(offset)
+      .limit(limit)
+      .get();
+
+    const customers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    res.status(200).json({
+      page,
+      limit,
+      total: customers.length,
+      customers,
+    });
+  } catch (error) {
+    console.error("Error fetching paginated customers:", error);
+    res.status(500).json({ error: "Error al obtener los clientes" });
+  }
+};
+
 // Esquema de validación para un cliente
 const customerSchema = Joi.object({
   nombre: Joi.string().required(),
@@ -9,44 +36,11 @@ const customerSchema = Joi.object({
   direccion: Joi.string().required(),
   celular: Joi.string().required(),
   zonaID: Joi.string().required(),
+  ubicacion: Joi.object({
+    latitude: Joi.number().required(),
+    longitude: Joi.number().required(),
+  }).optional(),
 });
-
-// Devolver todos los clientes
-exports.getAllCustomers = async (req, res) => {
-  try {
-    const cacheKey = `customers_page_${req.query.page || 1}`;
-    const cachedData = await redis.get(cacheKey);
-
-    if (cachedData) {
-      return res.status(200).json(JSON.parse(cachedData));
-    }
-
-    const { page = 1, limit = 10 } = req.query; // Parámetros de paginación con valores predeterminados
-    const offset = (page - 1) * limit;
-
-    const snapshot = await db.collection('clientes')
-      .orderBy('createdAt') // Ordenar por fecha de creación
-      .offset(offset) // Saltar registros según el offset
-      .limit(Number(limit)) // Límite de registros
-      .get();
-
-    const customers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    const response = {
-      page: Number(page),
-      limit: Number(limit),
-      total: customers.length,
-      customers,
-    };
-
-    // Guardar en Redis
-    await redis.set(cacheKey, JSON.stringify(response), 'EX', 60); // Expira en 60 segundos
-    res.status(200).json(response);
-  }catch (error) {
-    console.error("Error fetching paginated customers:", error);
-    res.status(500).json({ error: "Error al obtener los clientes" });
-  }
-};
 
 // Crear un nuevo cliente
 exports.createCustomer = async (req, res) => {
@@ -69,9 +63,22 @@ exports.createCustomer = async (req, res) => {
 };
 
 // Actualizar un cliente
+// Esquema de validación para un cliente
+const updateSchema = Joi.object({
+  nombre: Joi.string().optional(),
+  email: Joi.string().email().optional(),
+  direccion: Joi.string().optional(),
+  celular: Joi.string().optional(),
+  zonaID: Joi.string().optional(),
+  ubicacion: Joi.object({
+    latitude: Joi.number().optional(),
+    longitude: Joi.number().optional(),
+  }).optional(),
+});
+
 exports.updateCustomer = async (req, res) => {
   try {
-    const { error } = customerSchema.validate(req.body);
+    const { error } = updateSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ error: error.details[0].message });
     }
