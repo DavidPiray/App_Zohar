@@ -10,6 +10,7 @@ const verifyToken = require('../middleware/auth');
  *   description: Endpoints para la gestión de clientes
  */
 
+// Ruta para obtener clientes
 /**
  * @swagger
  * /api/customers:
@@ -41,6 +42,47 @@ const verifyToken = require('../middleware/auth');
  */
 router.get('/', verifyToken, customerController.getAllCustomers);
 
+// Ruta para búsqueda avanzada de clientes
+/**
+ * @swagger
+ * /api/customers/search:
+ *  get:
+ *     summary: Buscar clientes por nombre, email o zona
+ *     tags:
+ *       - Clientes
+ *     parameters:
+ *       - in: query
+ *         name: nombre
+ *         schema:
+ *           type: string
+ *         description: Buscar clientes por nombre
+ *       - in: query
+ *         name: email
+ *         schema:
+ *           type: string
+ *         description: Buscar clientes por email
+ *       - in: query
+ *         name: zona
+ *         schema:
+ *           type: string
+ *         description: Buscar clientes por zona
+ *     responses:
+ *       200:
+ *         description: Lista de clientes encontrados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Cliente'
+ *       404:
+ *         description: No se encontraron clientes
+ *       500:
+ *         description: Error del servidor
+ */
+router.get('/search', verifyToken, customerController.searchCustomers);
+
+// Ruta para crear clientes
 /**
  * @swagger
  * /api/customers:
@@ -87,9 +129,10 @@ router.get('/', verifyToken, customerController.getAllCustomers);
  *                   type: string
  *                 celular:
  *                   type: string
- */
+*/
 router.post('/', verifyToken, customerController.createCustomer);
 
+// Ruta para actualizar los clientes
 /**
  * @swagger
  * /api/customers/{id}:
@@ -131,6 +174,7 @@ router.post('/', verifyToken, customerController.createCustomer);
  */
 router.put('/:id', verifyToken, customerController.updateCustomer);
 
+// Ruta para borrar los clientes
 /**
  * @swagger
  * /api/customers/{id}:
