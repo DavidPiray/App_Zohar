@@ -1,19 +1,22 @@
 const request = require('supertest');
 const app = require('../../src/app'); // Asegúrate de exportar la app en app.js
 const token = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjNmZDA3MmRmYTM4MDU2NzlmMTZmZTQxNzM4YzJhM2FkM2Y5MGIyMTQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vYXBwem9oYXItNmU5M2MiLCJhdWQiOiJhcHB6b2hhci02ZTkzYyIsImF1dGhfdGltZSI6MTczMjgxMzM5OSwidXNlcl9pZCI6InNNdjNGRmNoSVBhb2czcmFGVDVKUHZVRlp3WDIiLCJzdWIiOiJzTXYzRkZjaElQYW9nM3JhRlQ1SlB2VUZad1gyIiwiaWF0IjoxNzMyODEzMzk5LCJleHAiOjE3MzI4MTY5OTksImVtYWlsIjoicHJ1ZWJhQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7ImVtYWlsIjpbInBydWViYUBleGFtcGxlLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6InBhc3N3b3JkIn19.kq7_tmdRk1gpzBl2mtyj1JP5XsA_zqP5fIm-JWLqnIbc9-0P7-IoWcX4r8-I9Zke-MCPCqbFYqI9fHC4tJg5xKxUifq_DErIT4Bsvc2GVdywtYTUeR-cuEUFR3UZ8Smd4jXFAnGcV5PVIWL4rMfgNCkRVLQmTM0iCyDeAUKSSdtu5WEd9PKijk39ZZduFws2WhKmMHEwuegWjeF1riCxkf3bLwcz1FfRLoCzAOurup6n5spSxa4IVA7v3ITCz6q5MoQ0myzNJdfTDTc_3WyFVrsnGCdzEPg6YAqlNQKcy9FP_F_867BONWuNRaGpqj-bbXwcFLy7eVwdebbuhD8VlQ'
-const userDelete = 'xqWPB4uA4YCQseZtCCim'
-const userUpdate = 'XaCVDWjviADeAJ0oMb1L'
+const userDelete = 'XaCVDWjviADeAJ0oMb1L'
+const userUpdate = 'EEtQhiWZ5P9tz6JTW7tI'
 
 describe('Customer Service API', () => {
 
   // Prueba para obtener todos los clientes
-  it('GET /api/customers should return a list of customers', async () => {
-    const response = await request(app).get('/api/customers')
+  it('GET /api/customers retorna paginas de clientes', async () => {
+    const response = await request(app)
+      .get('/api/customers?page=1&limit=2')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(response.body).toBeInstanceOf(Array); // Espera una lista de clientes
-    expect(response.body.length).toBeGreaterThan(0); // Al menos un cliente
+    expect(response.body).toHaveProperty('page', 1);
+    expect(response.body).toHaveProperty('limit', 2);
+    expect(response.body.customers).toBeInstanceOf(Array); // Espera una lista de clientes
+    expect(response.body.customers.length).toBeLessThanOrEqual(2); // Al menos un cliente
   });
 
   // Prueba para crear un cliente

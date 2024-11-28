@@ -15,30 +15,43 @@ const verifyToken = require('../middleware/auth');
  * @swagger
  * /api/customers:
  *   get:
- *     summary: Obtiene todos los clientes
- *     tags: [Customers]
+ *     summary: Listar clientes con paginación
+ *     tags:
+ *       - Clientes
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         description: Número de la página (por defecto: 1)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 10
+ *         description: Número de registros por página (por defecto: 10)
  *     responses:
  *       200:
- *         description: Lista de clientes
+ *         description: Lista de clientes con paginación
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                     description: ID del cliente
- *                   nombre:
- *                     type: string
- *                     description: Nombre del cliente
- *                   email:
- *                     type: string
- *                     description: Correo electrónico del cliente
- *                   celular:
- *                     type: string
- *                     description: Número de teléfono del cliente
+ *               type: object
+ *               properties:
+ *                 page:
+ *                   type: integer
+ *                   example: 1
+ *                 limit:
+ *                   type: integer
+ *                   example: 10
+ *                 total:
+ *                   type: integer
+ *                   example: 2
+ *                 customers:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Cliente'
  */
 router.get('/', verifyToken, customerController.getAllCustomers);
 

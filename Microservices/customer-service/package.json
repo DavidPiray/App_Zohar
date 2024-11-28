@@ -16,6 +16,8 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "firebase-admin": "^13.0.1",
+    "ioredis": "^5.4.1",
+    "joi": "^17.13.3",
     "nvm": "^0.0.4",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
