@@ -1,6 +1,6 @@
 const db = require('../services/firebase');
 const Joi = require('joi');
-const redis = require('../services/redis');
+// const redis = require('../services/redis');
 
 // Devolver todos los clientes
 exports.getAllCustomers = async (req, res) => {
