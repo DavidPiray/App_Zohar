@@ -1,0 +1,13 @@
+# Microservicio de Clientes
+Versión: v1.1
+
+## Notas de la versión
+- Se modificó la estructura del microservicio
+- Crud de clientes listos.
+
+## Descripción
+- El servicio de clientes gestiona toda la información relacionada con los clientes, incluyendo la creación, actualización, eliminación y búsqueda de clientes. También maneja la paginación.
+
+## Responsabilidades:
+1.	CRUD para datos de clientes.
+2.  Búsqueda avanzada de clientes nombre o email.

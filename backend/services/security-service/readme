@@ -1,0 +1,14 @@
+# Microservicio de seguridad
+Versión: v1.1
+
+## Notas de la Versión v1.1
+- Se reestructuro el código y carpetas del microservicio
+
+## Descripción
+Descripción:
+El servicio de seguridad es el núcleo de la autenticación y autorización en la arquitectura de microservicios. Gestiona la creación y gestión de usuarios, roles y permisos, asegurando que solo los usuarios autorizados puedan acceder a las funcionalidades correspondientes.
+
+## Responsabilidades:
+1.	Autorización: Definir y gestionar roles y permisos, asegurando que los usuarios solo puedan realizar acciones para las que están autorizados.
+2.	Gestión de Clientes: CRUD para datos de clientes.
+3.  Autenticación: Validar tokens JWT en las solicitudes.
