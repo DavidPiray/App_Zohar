@@ -4,8 +4,6 @@ npm-debug.log
 yarn-debug.log
 yarn-error.log
 
-# Firebase service account credentials
-/backend/config/*json
 
 # Environment variables
 .env
