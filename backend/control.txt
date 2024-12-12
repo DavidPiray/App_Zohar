@@ -1,0 +1,7 @@
+Control de versiones para microservicios
+- Microservicio Zonas
+    Versión: v1.0
+- Microservicio Distribuidor
+    Versión: v1.0
+- Microservicio Pedidos
+    Versión: v1.0
