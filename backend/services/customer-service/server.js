@@ -10,7 +10,7 @@ const app = express();
 // Middleware
 app.use(bodyParser.json());
 app.use(authMiddleware); // Protege todos los endpoints por defecto
-app.use('/api/customers', routes);
+app.use('/api/clientes', routes);
 
 const PORT = process.env.CUSTOMER_SERVICE_PORT || 3002;
 app.listen(PORT, () => {
