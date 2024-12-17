@@ -2,14 +2,18 @@ const { createZoneSchema, updateZoneSchema } = require('../validations/zonaValid
 const Zone = require('../models/zonaModel');
 
 const ZoneController = {
+  // Crear Zonas
   async create(req, res) {
+    // Validar con el esquema
     const { error } = createZoneSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ error: error.details[0].message });
     }
-
     try {
       const response = await Zone.createZone(req.body);
+      if (response.error){
+        return res.status(404).json({error: response.error});
+      }
       res.status(201).json(response);
     } catch (error) {
       res.status(500).json({ error: 'Fallo al crear la zona' });

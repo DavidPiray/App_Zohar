@@ -1,9 +1,24 @@
 const db = require('../../../utils/firebase');
+const { existsById } = require('../../distributor-service/models/distribuidorModel');
 
 const Zona = {
+  // Verificar si ya existe un ID repetido
+  async existsById(id_zona){
+    const doc = await db.collection('zonas').doc(id_zona).get();
+    return doc.exists;
+  },
+
   // Crear zonas
   async createZone(zoneData) {
-    const zoneRef = db.collection('zonas').doc(zoneData.id_zona);
+    const { id_zona } = zoneData;
+    // Verificar duplicidad en ID
+    const exists = await this.existsById(id_zona);
+     console.log(exists);
+    const zoneRef = db.collection('zonas').doc(id_zona);
+    if(exists){
+      return { error: 'Zona con ID repetido' };
+    }
+    // Crear el documento con ID manual
     await zoneRef.set(zoneData);
     return { message: 'Zona creada con éxito' };
   },
