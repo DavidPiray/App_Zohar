@@ -1,8 +1,23 @@
 const db = require('../../../utils/firebase');
 
 const Order = {
+  // Verificar si un pedido existe
+  async existsById(id_pedido) {
+    const doc = await db.collection('pedidos').doc(id_pedido).get();
+    return doc.exists;
+  },
+
+  // Crear un pedido
   async createOrder(orderData) {
-    const orderRef = db.collection('pedidos').doc(orderData.id_pedido);
+    const { id_pedido } = orderData;
+    // Verficiar duplicidad
+    const exists = await this.existsById(id_pedido);
+    // console.log(exists);
+    const orderRef = db.collection('pedidos').doc(id_pedido);
+    if (exists){
+      return { error: 'Pedido con ID Repetido' };
+    }
+    // Crear el documento con ID manual
     await orderRef.set(orderData);
     return { message: 'Pedido creado con éxito!' };
   },

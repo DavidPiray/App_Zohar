@@ -9,11 +9,10 @@ const createOrderSchema = Joi.object({
     .items(
       Joi.object({
         id_producto: Joi.string().required(),
-        cantidad: Joi.number().integer().min(1).required(),
+        cantidad: Joi.number().integer().min(1).positive().required()
       })
-    )
-    .required(),
-    fechaCreacion: Joi.date().default(() => new Date()),
+    ).min(1).required(),
+    fecha: Joi.date().default(() => new Date()),
 });
 
 const updateOrderSchema = Joi.object({
@@ -23,7 +22,7 @@ const updateOrderSchema = Joi.object({
     .items(
       Joi.object({
         id_producto: Joi.string().optional(),
-        cantidad: Joi.number().integer().min(1).optional(),
+        cantidad: Joi.number().integer().min(1).positive().optional(),
       })
     )
     .optional(),
