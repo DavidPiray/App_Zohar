@@ -1,8 +1,27 @@
 const db = require('../../../utils/firebase');
 
 const Customer = {
+  // Validar si un cliente existe por email o celular
+  async existsByEmailOrPhone(email, celular) {
+    const snapshot = await db.collection('clientes')
+      .where('email', '==', email)
+      .get();
+    
+    const phoneSnapshot = await db.collection('clientes')
+      .where('celular', '==', celular)
+      .get();
+
+    return !snapshot.empty || !phoneSnapshot.empty;
+  },
+
+  // Crear un cliente
   async createCustomer(customerData) {
-    const customerRef = db.collection('clientes').doc(customerData.id_cliente);
+    const { email, celular } = customerData;
+    const exists = await this.existsByEmailOrPhone(email,celular);
+    if(exists){
+      return { error: 'Distribuidor con ID repetido' };
+    }
+    const customerRef = db.collection('clientes');
     await customerRef.set(customerData);
     return { message: 'Cliente creado con éxito!' };
   },
