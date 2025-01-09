@@ -9,19 +9,21 @@ const OrderController = {
     const { error } = createOrderSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ error: error.details[0].message });
+      console.log(error.details[0].message);
     }
     try {
       const { id_pedido, clienteID, productos } = req.body;
       // Token de autenticación
-      const token = req.headers.authorization || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJyb2xlcyI6WyJjbGllbnQiXSwiaWF0IjoxNzM0MzE3NDg2LCJleHAiOjE3MzQzMjEwODZ9.YABtxNpAVw4GTyEebgm9ulMCXjWf9XCyQJWfMgK-_c0';
+      const token = req.headers.authorization ;
       console.log(token);
 
       // 1. Verificar que el cliente exista en el microservicio de Clientes
-      const customerResponse = await axios.get(`http://localhost:3002/api/clientes/${clienteID}`,
+      const customerResponse = await axios.get(`http://customer-service:3002/api/clientes/${clienteID}`,
         { headers: { Authorization: token } }
       );
       if (!customerResponse.data) {
         return res.status(404).json({ error: 'Cliente no encontrado' });
+        console.log("Cliente no encontrado");
       }
       const cliente = customerResponse.data;
       console.log(cliente);
@@ -39,7 +41,7 @@ const OrderController = {
       
       // 3. Determinar la zona del cliente utilizando el microservicio de Zonas
       const zoneResponse = await axios.get(
-        `http://localhost:3003/api/zonas/location?latitude=${cliente.ubicacion.latitude}&longitude=${cliente.ubicacion.longitude}`,
+        `http://zone-service:3003/api/zonas/location?latitude=${cliente.ubicacion.latitude}&longitude=${cliente.ubicacion.longitude}`,
         { headers: { Authorization: token } }
       );
       if (!zoneResponse.data) {
@@ -49,7 +51,7 @@ const OrderController = {
       const zona = zoneResponse.data;
 
       // 4. Buscar un distribuidor activo en la zona utilizando el servicio de distribuidor
-      const distributorResponse = await axios.get(`http://localhost:3004/api/distribuidor/zona/${zona.id_zona}`,
+      const distributorResponse = await axios.get(`http://distributor-service:3004/api/distribuidor/zona/${zona.id_zona}`,
         { headers: { Authorization: token } });
       const distribuidores = distributorResponse.data.filter(d => d.estado === 'activo');
       if (distribuidores.length === 0) {
@@ -150,6 +152,25 @@ const OrderController = {
       res.status(500).json({ error: 'Fallo al eliminar el pedido' });
     }
   },
+
+  async getByIdDistributor(req, res) {
+    try {
+      const { id_distribuidor } = req.params;
+  
+      // Obtener pedidos asignados al distribuidor
+      const orders = await Order.getOrdersByDistributor(id_distribuidor);
+  
+      if (!orders.length) {
+        return res.status(404).json({ error: 'No se encontraron pedidos para este distribuidor' });
+      }
+  
+      res.status(200).json(orders);
+    } catch (error) {
+      console.error('Error al obtener pedidos por distribuidor:', error.message);
+      res.status(500).json({ error: 'Error al obtener pedidos por distribuidor' });
+    }
+  },
+  
 };
 
 module.exports = OrderController;

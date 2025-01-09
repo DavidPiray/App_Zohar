@@ -2,13 +2,14 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const routes = require('./routes/routes');
-const authMiddleware = require('../../utils/authMiddleware');
-
+const authMiddleware = require('./shared/utils/authMiddleware');
+const cors = require('cors');
 dotenv.config({ path: __dirname + '/.env' });
 
 const app = express();
 
 // Middleware
+app.use(cors());
 app.use(bodyParser.json());
 app.use(authMiddleware); // Protege todos los endpoints
 app.use('/api/pedido', routes);

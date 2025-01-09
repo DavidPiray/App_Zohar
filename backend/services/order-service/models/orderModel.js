@@ -1,4 +1,4 @@
-const db = require('../../../utils/firebase');
+const db = require('../shared/utils/firebase');
 
 const Order = {
   // Verificar si un pedido existe
@@ -58,6 +58,12 @@ const Order = {
     const snapshot = await db.collection('pedidos').where('distribuidorID', '==', distributorID).get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
+
+  async getOrdersByDistributor(distributorID) {
+    const snapshot = await db.collection('pedidos').where('distribuidorID', '==', distributorID).get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+  
 };
 
 module.exports = Order;
