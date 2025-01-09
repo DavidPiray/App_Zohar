@@ -1,13 +1,26 @@
 const express = require('express');
 const ZoneController = require('../controllers/zonaController');
+const authorize = require('../middlewares/authorize');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-router.post('/', ZoneController.create);
-router.get('/location', ZoneController.getByLocation); // Consulta por ubicación
+// Crear nueva zona
+router.post('/', [authMiddleware, authorize(['admin'])], ZoneController.create);
+
+// Obtener zona por ubicacion
+router.get('/location', ZoneController.getByLocation); 
+
+// Obtener todas las zonas
 router.get('/', ZoneController.getAll);
+
+// Obtener zona por ID
 router.get('/:id', ZoneController.getById);
-router.put('/:id', ZoneController.update);
-router.delete('/:id', ZoneController.delete);
+
+// Actualizar zona por ID
+router.put('/:id', [authMiddleware, authorize(['admin'])], ZoneController.update);
+
+// Eliminar zona por ID
+router.delete('/:id', [authMiddleware, authorize(['admin'])], ZoneController.delete);
 
 module.exports = router;

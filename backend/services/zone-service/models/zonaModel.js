@@ -1,5 +1,4 @@
-const db = require('../../../utils/firebase');
-const { existsById } = require('../../distributor-service/models/distribuidorModel');
+const db = require('../shared/utils/firebase');
 
 const Zona = {
   // Verificar si ya existe un ID repetido
