@@ -1,8 +1,81 @@
 const { createDistributorSchema, updateDistributorSchema } = require('../validations/distribuidorValidation');
 const Distributor = require('../models/distribuidorModel');
+const axios = require('axios'); // Para consumir otros servicios
 const { exist } = require('joi');
 
 const DistributorController = {
+  // Lógica para el producto
+  // Agregar producto al inventario
+  async addProductToInventory(req, res) {
+    try {
+      const { id_distribuidor } = req.params;
+      const { id_producto, nombre, stock } = req.body;
+      console.log('distribuidor: ',id_distribuidor);
+      console.log('producto: ',id_producto);
+      
+      if (!id_producto || !nombre || typeof stock !== 'number') {
+        return res.status(400).json({ error: 'Datos incompletos: id_producto, nombre y stock son obligatorios' });
+      }
+      const token = req.headers.authorization ;
+      console.log(token);
+      // Validar que el producto exista en el Product Service
+      console.log('Entrando a recibir datos');
+      const productResponse = await axios.get(`http://localhost:3006/api/productos/${id_producto}`,
+        { headers: { Authorization: token } }
+      );
+      console.log('Respuesta: ', productResponse);
+      if (!productResponse.data) {
+        console.log('El producto no existe en el sistema');
+        return res.status(404).json({ error: 'El producto no existe en el sistema' });
+      }
+      console.log('-------------------------------------------');
+      const response = await Distributor.addProductToInventory(id_distribuidor, { id_producto, nombre, stock });
+      res.status(201).json(response);
+    } catch (error) {
+      console.error(error.message);
+      res.status(400).json({ error: error.message });
+    }
+  },
+
+  // Obtener inventario del distribuidor
+  async getInventory(req, res) {
+    try {
+      const { id_distribuidor } = req.params;
+      const inventory = await Distributor.getInventory(id_distribuidor);
+      res.status(200).json(inventory);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+
+  // Actualizar stock de producto
+  async updateProductStock(req, res) {
+    try {
+      const { id_distribuidor, id_producto } = req.params;
+      const { cantidad } = req.body;
+
+      if (typeof cantidad !== 'number') {
+        return res.status(400).json({ error: 'La cantidad debe ser un número' });
+      }
+
+      const response = await Distributor.updateProductStock(id_distribuidor, id_producto, cantidad);
+      res.status(200).json(response);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+
+  // Eliminar producto del inventario
+  async removeProductFromInventory(req, res) {
+    try {
+      const { id_distribuidor, id_producto } = req.params;
+      const response = await Distributor.removeProductFromInventory(id_distribuidor, id_producto);
+      res.status(200).json(response);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+
   // Crear distribuidor
   async create(req, res) {
     // Validar con el esquema
