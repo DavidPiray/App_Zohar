@@ -1,4 +1,4 @@
-const db = require('../../../utils/firebase');
+const db = require('../shared/utils/firebase');
 
 const Customer = {
   // Validar si un cliente existe por email o celular
@@ -18,11 +18,11 @@ const Customer = {
   async createCustomer(customerData) {
     const { email, celular } = customerData;
     const exists = await this.existsByEmailOrPhone(email,celular);
+    const customerRef = db.collection('clientes');
     if(exists){
       return { error: 'Distribuidor con ID repetido' };
     }
-    const customerRef = db.collection('clientes');
-    await customerRef.set(customerData);
+    await customerRef.add(customerData);
     return { message: 'Cliente creado con éxito!' };
   },
 

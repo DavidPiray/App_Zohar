@@ -2,7 +2,6 @@ const Joi = require('joi');
 
 // Esquema de validación para crear un cliente
 const createCustomerSchema = Joi.object({
-  id_cliente: Joi.string().required(),
   nombre: Joi.string().required(),
   email: Joi.string().email().required(),
   direccion: Joi.string().required(),

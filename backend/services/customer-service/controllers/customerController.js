@@ -9,8 +9,13 @@ const CustomerController = {
     if (error) {
       return res.status(400).json({ error: error.details[0].message });
     }
+    const cliente = {
+      ...req.body,
+      fechaCreacion: new Date(),
+    };
+
     try {
-      const response = await Customer.createCustomer(req.body);
+      const response = await Customer.createCustomer(cliente);
       res.status(201).json(response);
     } catch (error) {
       res.status(500).json({ error: 'Fallo al crear un cliente' });
