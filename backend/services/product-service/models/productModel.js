@@ -1,4 +1,4 @@
-const db = require('../../../utils/firebase');
+const db = require('../shared/utils/firebase');
 
 const Product = {
   // Verificar si un producto existe por nombre o ID
@@ -30,8 +30,9 @@ const Product = {
 
   // Obtener producto por ID
   async getProductById(id_producto) {
-    const doc = await db.collection('productos').doc(id_producto).get();
-    return doc.exists ? { id_producto, ...doc.data() } : null;
+    const productRef = db.collection('productos').doc(id_producto);
+    const productDoc = await productRef.get();
+    return productDoc.exists ? productDoc.data() : null;
   },
 
   // Actualizar producto
