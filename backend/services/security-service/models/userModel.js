@@ -1,4 +1,4 @@
-const db = require('../../../utils/firebase');
+const db = require('../shared/utils/firebase');
 
 const User = {
   async createUser(userData) {
