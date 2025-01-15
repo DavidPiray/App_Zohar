@@ -6,6 +6,7 @@ yarn-error.log
 
 # Firebase service account credentials
 /backend/config/*json
+/backend/shared/utils/*js
 
 # Environment variables
 .env

@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           title: 'Zohar',
           theme: ThemeData(primarySwatch: Colors.blue),
-          initialRoute: '/main',
+          initialRoute: '/register',
           routes: AppRoutes.routes,
           builder: (context, widget) {
             // Habilitar ScreenUtil para el texto
