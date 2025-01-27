@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../api/api_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/orders_service.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
   @override
@@ -7,13 +8,14 @@ class OrderHistoryScreen extends StatefulWidget {
 }
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
-  final ApiService apiService = ApiService();
+  final AuthService apiService = AuthService();
+  final OrdersService ordersService = OrdersService();
   late Future<List<dynamic>> _orders;
 
   @override
   void initState() {
     super.initState();
-    _orders = apiService.getOrders(); // Obtener el historial de pedidos
+    _orders = ordersService.getOrders(); // Obtener el historial de pedidos
   }
 
   @override

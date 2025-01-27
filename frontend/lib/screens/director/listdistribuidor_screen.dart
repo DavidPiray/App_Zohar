@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../api/api_service.dart';
+import '../../services/distributor_service.dart';
 
 class ListdistribuidorScreen extends StatefulWidget {
   @override
@@ -7,7 +7,7 @@ class ListdistribuidorScreen extends StatefulWidget {
 }
 
 class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
-  final ApiService apiService = ApiService();
+  final DistributorService distributorService = DistributorService();
   List<dynamic> distributors = [];
   bool isLoading = true;
 
@@ -19,7 +19,7 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
 
   Future<void> _fetchDistributors() async {
     try {
-      final result = await apiService.getDistributors();
+      final result = await distributorService.getDistributors();
       setState(() {
         distributors = result;
         isLoading = false;
@@ -55,7 +55,7 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await apiService.deleteDistributor(distributor['id']);
+                await distributorService.deleteDistributor(distributor['id']);
                 _fetchDistributors();
               },
               child: Text('Eliminar', style: TextStyle(color: Colors.red)),
@@ -120,7 +120,7 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
           actions: [
             TextButton(
               onPressed: () async {
-                await apiService.updateDistributor(distributor['id'], {
+                await distributor.updateDistributor(distributor['id'], {
                   'nombre': name,
                   'zonaAsignada': zone,
                   'estado': state,
@@ -196,7 +196,7 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
           actions: [
             TextButton(
               onPressed: () async {
-                await apiService.addDistributor({
+                await distributorService.addDistributor({
                   'id_distribuidor': id,
                   'nombre': name,
                   'celular': celular,

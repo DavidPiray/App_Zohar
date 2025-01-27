@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../api/api_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/product_service.dart';
+import '../../services/orders_service.dart';
 
 class ClientScreen extends StatefulWidget {
   @override
@@ -7,7 +9,9 @@ class ClientScreen extends StatefulWidget {
 }
 
 class _ClientScreenState extends State<ClientScreen> {
-  final ApiService apiService = ApiService();
+  final AuthService apiService = AuthService();
+  final ProductService productService = ProductService();
+  final OrdersService ordersService = OrdersService();
   late Future<List<dynamic>> _products; // Productos obtenidos del API
   Map<String, int> selectedQuantities =
       {}; // Cantidades seleccionadas por producto
@@ -15,7 +19,8 @@ class _ClientScreenState extends State<ClientScreen> {
   @override
   void initState() {
     super.initState();
-    _products = apiService.getProducts(); // Obtener productos desde el backend
+    _products =
+        productService.getProducts(); // Obtener productos desde el backend
   }
 
   void _logout(BuildContext context) async {
@@ -139,7 +144,7 @@ class _ClientScreenState extends State<ClientScreen> {
       final orderDetails = {
         'id_pedido':
             'order${DateTime.now().millisecondsSinceEpoch}', // Genera un ID único (puedes ajustar esto según las necesidades)
-            //'order10',
+        //'order10',
         'clienteID':
             'client1', // Reemplaza con el ID real del cliente (extraído de la base de datos si es necesario)
         'estado': 'pendiente', // Estado inicial del pedido
@@ -153,8 +158,8 @@ class _ClientScreenState extends State<ClientScreen> {
       };
 
       // Realizar la solicitud al API de pedidos
-      await apiService.createOrder(orderDetails);
-      
+      await ordersService.createOrder(orderDetails);
+
       // Mostrar mensaje de éxito
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Pedido realizado con éxito.')),
@@ -189,19 +194,20 @@ class _ClientScreenState extends State<ClientScreen> {
         child: Column(
           children: [
             // Banner o logo
-            Container(
+            /* Container(
               width: double.infinity,
               height: 150,
               color: Colors.grey[300],
-              child: Center(
+              child: const Center(
                 child: Text(
                   'Banner o Logo',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
-            ),
-            SizedBox(height: 20),
+            ), */
+            const SizedBox(height: 20),
             // Lista de productos
+            
             Expanded(
               child: FutureBuilder<List<dynamic>>(
                 future: _products,

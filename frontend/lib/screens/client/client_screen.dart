@@ -1,40 +1,94 @@
 import 'package:flutter/material.dart';
-import '../../api/api_service.dart';
+import 'package:firebase_database/firebase_database.dart';
+import '../../widgets/box.dart';
+import '../../widgets/animated_alert.dart';
+import '../../services/auth_service.dart';
+import '../../services/product_service.dart';
+import '../../services/orders_service.dart';
 
 class ClientScreen extends StatefulWidget {
+  const ClientScreen({super.key});
+
   @override
   _ClientScreenState createState() => _ClientScreenState();
 }
 
 class _ClientScreenState extends State<ClientScreen> {
-  final ApiService apiService = ApiService();
-  late Future<List<dynamic>> _products; // Productos obtenidos del API
-  Map<String, int> selectedQuantities =
-      {}; // Cantidades seleccionadas por producto
+  final AuthService authService = AuthService();
+  final ProductService productService = ProductService();
+  final OrdersService ordersService = OrdersService();
+  final DatabaseReference _database = FirebaseDatabase.instance.ref();
+
+  late Future<List<dynamic>> _products;
+  late Stream<DatabaseEvent> _orderStatusStream;
+
+  Map<String, int> selectedQuantities = {};
+  String currentOrderStatus = "pendiente"; // Estado inicial
+  String orderId = "o1234567890"; // Reemplaza con el ID del pedido actual
+  bool isSidebarVisible = true;
 
   @override
   void initState() {
     super.initState();
-    _products = apiService.getProducts(); // Obtener productos desde el backend
+    _setupOrderListener();
+    _products = productService.getProducts();
+  }
+
+  // Configurar el listener para escuchar cambios en el estado del pedido
+  void _setupOrderListener() {
+    _orderStatusStream = _database.child("pedido/$orderId/estado").onValue;
+
+    _orderStatusStream.listen((DatabaseEvent event) {
+      if (event.snapshot.value != null) {
+        final newStatus = event.snapshot.value as String;
+        if (newStatus != currentOrderStatus) {
+          setState(() {
+            currentOrderStatus = newStatus;
+          });
+
+          // Mostrar alerta al cliente sobre el cambio de estado
+          AnimatedAlert.show(
+            context,
+            "Actualización de pedido",
+            "El estado de tu pedido ha cambiado a: $newStatus",
+            type: AnimatedAlertType.info,
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // Cancela el listener para evitar fugas de memoria
+    _orderStatusStream.drain();
+    super.dispose();
   }
 
   void _logout(BuildContext context) async {
-    await apiService.logout(); // Limpiar sesión
-    Navigator.pushReplacementNamed(context, '/login'); // Redirigir al login
+    await authService.logout();
+    // ignore: use_build_context_synchronously
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+
+  void _toggleSidebar() {
+    setState(() {
+      isSidebarVisible = !isSidebarVisible;
+    });
   }
 
   void _buyProducts() {
-    // Validación: Verificar si hay productos seleccionados
     if (selectedQuantities.isEmpty ||
         selectedQuantities.values.every((quantity) => quantity == 0)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Por favor, selecciona al menos un producto.')),
+      AnimatedAlert.show(
+        context,
+        'Error',
+        'Por favor, selecciona al menos un producto.',
+        type: AnimatedAlertType.error,
       );
       return;
     }
 
-    // Mostrar el resumen antes de confirmar el pedido
-    // Mostrar el resumen antes de confirmar el pedido
     showDialog(
       context: context,
       builder: (context) {
@@ -42,36 +96,20 @@ class _ClientScreenState extends State<ClientScreen> {
           future: _products,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
               return AlertDialog(
-                title: Text('Error'),
-                content: Text(
-                    'Ocurrió un error al cargar los productos: ${snapshot.error}'),
+                title: const Text('Error'),
+                content: Text('Ocurrió un error: ${snapshot.error}'),
                 actions: [
                   TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: Text('Cerrar'),
-                  ),
-                ],
-              );
-            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return AlertDialog(
-                title: Text('Sin productos'),
-                content: Text('No hay productos disponibles para mostrar.'),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: Text('Cerrar'),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cerrar'),
                   ),
                 ],
               );
             } else {
-              final products = snapshot.data!;
+              final products = snapshot.data ?? [];
               double total = 0.0;
               List<Widget> resumen = selectedQuantities.entries.map((entry) {
                 final productId = entry.key;
@@ -85,22 +123,23 @@ class _ClientScreenState extends State<ClientScreen> {
                     title: Text(product['nombre']),
                     subtitle: Text('Cantidad: $quantity'),
                     trailing: Text(
-                        'Subtotal: \$${(product['precio_cliente'] * quantity).toStringAsFixed(2)}'),
+                      'Subtotal: \$${(product['precio_cliente'] * quantity).toStringAsFixed(2)}',
+                    ),
                   );
                 }
-                return SizedBox.shrink();
+                return const SizedBox.shrink();
               }).toList();
 
               return AlertDialog(
-                title: Text('Resumen del Pedido'),
+                title: const Text('Resumen del Pedido'),
                 content: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       ...resumen,
-                      Divider(),
+                      const Divider(),
                       ListTile(
-                        title: Text('Total:'),
+                        title: const Text('Total:'),
                         trailing: Text('\$${total.toStringAsFixed(2)}'),
                       ),
                     ],
@@ -108,17 +147,15 @@ class _ClientScreenState extends State<ClientScreen> {
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: Text('Cancelar'),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar'),
                   ),
                   ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _confirmPurchase(); // Confirmar la compra
+                      _confirmPurchase();
                     },
-                    child: Text('Confirmar Pedido'),
+                    child: const Text('Confirmar Pedido'),
                   ),
                 ],
               );
@@ -130,19 +167,12 @@ class _ClientScreenState extends State<ClientScreen> {
   }
 
   void _confirmPurchase() async {
-    // Aquí puedes implementar la lógica para realizar el pedido con la API
-    final currentContext =
-        context; // Captura el contexto antes de entrar en un async gap
-
     try {
-      // Crear un mapa de productos seleccionados y cantidades
       final orderDetails = {
-        'id_pedido':
-            'order${DateTime.now().millisecondsSinceEpoch}', // Genera un ID único (puedes ajustar esto según las necesidades)
-            //'order10',
-        'clienteID':
-            'client1', // Reemplaza con el ID real del cliente (extraído de la base de datos si es necesario)
-        'estado': 'pendiente', // Estado inicial del pedido
+        'id_pedido': 'o${DateTime.now().millisecondsSinceEpoch}',
+        'clienteID': 'client1',
+        'distribuidorID': 'dist1',
+        'estado': 'pendiente',
         'productos': selectedQuantities.entries
             .where((entry) => entry.value > 0)
             .map((entry) => {
@@ -152,141 +182,198 @@ class _ClientScreenState extends State<ClientScreen> {
             .toList(),
       };
 
-      // Realizar la solicitud al API de pedidos
-      await apiService.createOrder(orderDetails);
-      
-      // Mostrar mensaje de éxito
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Pedido realizado con éxito.')),
+      await ordersService.createOrder(orderDetails);
+      AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
+        context,
+        'Éxito',
+        'Pedido realizado con éxito.',
+        type: AnimatedAlertType.success,
       );
 
-      // Reiniciar las cantidades seleccionadas
       setState(() {
         selectedQuantities.clear();
       });
     } catch (e) {
-      // Mostrar mensaje de error
-      ScaffoldMessenger.of(currentContext).showSnackBar(
-        SnackBar(content: Text('Error al realizar el pedido: $e')),
+      AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
+        context,
+        'Error',
+        'Error al realizar el pedido: $e',
+        type: AnimatedAlertType.error,
       );
     }
   }
 
+  Widget _buildOrderStatus() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Text(
+        "Estado actual del pedido: $currentOrderStatus",
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool isWideScreen = MediaQuery.of(context).size.width > 600;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Cliente'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: () => _logout(context), // Botón para cerrar sesión
-          ),
+        title: const Text('Cliente'),
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                if (!isWideScreen) {
+                  Scaffold.of(context).openDrawer();
+                } else {
+                  _toggleSidebar();
+                }
+              },
+            );
+          },
+        ),
+      ),
+      drawer: !isWideScreen
+          ? Drawer(
+              child: Container(
+                color: const Color(0xFF3B945E),
+                child: _buildSidebarContent(),
+              ),
+            )
+          : null,
+      body: Column(
+        children: [
+          _buildOrderStatus(),
+          Expanded(child: _buildProductList(isWideScreen)),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Banner o logo
-            Container(
-              width: double.infinity,
-              height: 150,
-              color: Colors.grey[300],
-              child: Center(
-                child: Text(
-                  'Banner o Logo',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            // Lista de productos
-            Expanded(
-              child: FutureBuilder<List<dynamic>>(
-                future: _products,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Center(child: Text('No hay productos disponibles'));
-                  } else {
-                    final products = snapshot.data!;
-                    return ListView.builder(
-                      itemCount: products.length,
-                      itemBuilder: (context, index) {
-                        final product = products[index];
-                        final productId = product['id_producto'];
-                        final productName = product['nombre'];
-                        final productDescription = product['descripcion'];
-                        final productPrice = product['precio_cliente'];
+      floatingActionButton: FloatingActionButton(
+        onPressed: _buyProducts,
+        child: const Icon(Icons.shopping_cart),
+      ),
+    );
+  }
 
-                        // Inicializar la cantidad seleccionada si no existe
-                        if (!selectedQuantities.containsKey(productId)) {
-                          selectedQuantities[productId] = 0;
-                        }
+  Widget _buildSidebar() {
+    return Container(
+      width: 250,
+      color: const Color(0xFF3B945E),
+      child: _buildSidebarContent(),
+    );
+  }
 
-                        return Card(
-                          margin: EdgeInsets.symmetric(vertical: 8),
-                          child: ListTile(
-                            leading: Icon(Icons.local_drink),
-                            title: Text(productName),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(productDescription),
-                                Text(
-                                    'Precio: \$${productPrice.toStringAsFixed(2)}'),
-                              ],
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.remove),
-                                  onPressed: () {
-                                    setState(() {
-                                      if (selectedQuantities[productId]! > 0) {
-                                        selectedQuantities[productId] =
-                                            selectedQuantities[productId]! - 1;
-                                      }
-                                    });
-                                  },
-                                ),
-                                Text('${selectedQuantities[productId]}'),
-                                IconButton(
-                                  icon: Icon(Icons.add),
-                                  onPressed: () {
-                                    setState(() {
-                                      selectedQuantities[productId] =
-                                          selectedQuantities[productId]! + 1;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  }
-                },
-              ),
+  Widget _buildSidebarContent() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'Opciones',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            // Botón de comprar
-            ElevatedButton.icon(
-              onPressed: _buyProducts,
-              icon: Icon(Icons.shopping_cart),
-              label: Text('HACER PEDIDO'),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                textStyle: TextStyle(fontSize: 18),
-              ),
-            ),
-          ],
+          ),
         ),
+        ListTile(
+          leading: const Icon(Icons.person, color: Colors.white),
+          title: const Text('Perfil', style: TextStyle(color: Colors.white)),
+          onTap: () {
+            Navigator.pushNamed(context, '/profileClient');
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.list, color: Colors.white),
+          title: const Text('Pedidos', style: TextStyle(color: Colors.white)),
+          onTap: () {
+            Navigator.pushNamed(context, '/historyClient');
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.logout, color: Colors.white),
+          title: const Text('Salir', style: TextStyle(color: Colors.white)),
+          onTap: () => _logout(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductList(bool isWideScreen) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: FutureBuilder<List<dynamic>>(
+        future: _products,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('No hay productos disponibles'));
+          } else {
+            final products = snapshot.data!;
+            return GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isWideScreen ? 3 : 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: isWideScreen ? 1.8 : 1,
+              ),
+              itemCount: products.length,
+              itemBuilder: (context, index) {
+                final product = products[index];
+                final productId = product['id_producto'];
+                final productName = product['nombre'];
+                final productPrice = product['precio_cliente'];
+
+                if (!selectedQuantities.containsKey(productId)) {
+                  selectedQuantities[productId] = 0;
+                }
+
+                return AdaptiveCustomCard(
+                  icon: Icons.local_drink,
+                  title: productName,
+                  additionalInfo:
+                      'Precio: \$${productPrice.toStringAsFixed(2)}',
+                  onTap: () {},
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove),
+                        onPressed: () {
+                          setState(() {
+                            if (selectedQuantities[productId]! > 0) {
+                              selectedQuantities[productId] =
+                                  selectedQuantities[productId]! - 1;
+                            }
+                          });
+                        },
+                      ),
+                      Text('${selectedQuantities[productId]}'),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: () {
+                          setState(() {
+                            selectedQuantities[productId] =
+                                selectedQuantities[productId]! + 1;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          }
+        },
       ),
     );
   }

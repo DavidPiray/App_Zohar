@@ -1,142 +1,260 @@
 import 'package:flutter/material.dart';
-import '../../api/api_service.dart';
+import 'package:firebase_database/firebase_database.dart';
+import '../../services/distributor_service.dart';
+import '../../services/orders_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/realtime_service.dart';
+import '../../widgets/animated_alert.dart';
 
 class DistributorScreen extends StatefulWidget {
+  const DistributorScreen({super.key});
+
   @override
-  _DistributorScreenState createState() => _DistributorScreenState();
+  State<DistributorScreen> createState() => _DistributorScreenState();
 }
 
 class _DistributorScreenState extends State<DistributorScreen> {
-  final ApiService apiService = ApiService();
-  late Future<List<dynamic>> _orders; // Pedidos asignados al distribuidor
+  final DistributorService distributorService = DistributorService();
+  final OrdersService ordersService = OrdersService();
+  final AuthService authService = AuthService();
+  final RealtimeService realtimeService = RealtimeService();
+
+  late Future<List<dynamic>> _orders;
+  late Stream<DatabaseEvent> _realtimeStream;
+
+  Map<String, String> orderStatuses = {
+    'pendiente': 'en progreso',
+    'en progreso': 'completado'
+  };
+  Map<String, Color> statusColors = {
+    'pendiente': Colors.grey,
+    'en progreso': Colors.amber,
+    'completado': Colors.green,
+    'cancelado': Colors.red,
+  };
+  String distributorId = "dist1"; // Distribuidor asignado (temporal)
+  bool isSidebarVisible = true;
 
   @override
   void initState() {
     super.initState();
-    _orders = apiService.getOrdersByDistributor(
-        "dist1"); // API para obtener pedidos del distribuidor
+    _fetchOrders();
+    _listenToRealtimeUpdates();
+  }
+
+  void _fetchOrders() {
+    setState(() {
+      _orders = distributorService.getOrdersByDistributor(distributorId);
+    });
+  }
+
+  void _listenToRealtimeUpdates() {
+    _realtimeStream = realtimeService
+        .listenToOrders(); // Escucha los cambios en todos los pedidos
+    _realtimeStream.listen((event) {
+      final data = event.snapshot.value;
+      // Si hay cambios en Firebase, vuelve a cargar los pedidos
+      if (data != null) {
+        _fetchOrders();
+      }
+    });
   }
 
   void _logout(BuildContext context) async {
-    await apiService.logout();
+    await authService.logout();
+    // ignore: use_build_context_synchronously
     Navigator.pushReplacementNamed(context, '/login');
   }
 
-  void _updateOrderStatus(String orderId) async {
+  void _toggleSidebar() {
+    setState(() {
+      isSidebarVisible = !isSidebarVisible;
+    });
+  }
+
+  void _updateOrderStatus(String orderId, String currentStatus) async {
     try {
-      await apiService.updateOrderStatus(
-          orderId, 'en progreso'); // Cambiar estado a 'en progreso'
-      setState(() {
-        _orders =
-            apiService.getOrdersByDistributor("dist1"); // Actualizar pedidos
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Pedido actualizado a "En Progreso"')),
+      String? nextStatus = orderStatuses[currentStatus];
+      if (nextStatus == null) return;
+      await ordersService.updateOrderStatus(orderId, nextStatus);
+
+      AnimatedAlert.show(
+        context,
+        'Éxito',
+        'El pedido se ha actualizado a "$nextStatus".',
+        type: AnimatedAlertType.success,
       );
+      _fetchOrders();
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al actualizar el pedido: $error')),
+      AnimatedAlert.show(
+        context,
+        'Error',
+        'No se pudo actualizar el pedido: $error',
+        type: AnimatedAlertType.error,
       );
     }
   }
 
-  void _viewMap(String clientId) {
-    // Navegar a la pantalla del mapa
-    Navigator.pushNamed(context, '/map', arguments: clientId);
+  void _goToInventory() {
+    Navigator.pushNamed(context, '/inventory_screen');
   }
 
-  void _goToInventory() {
-    Navigator.pushNamed(
-        context, '/inventory_screen'); // Redirigir a la pantalla de inventario
+  void _goToProfile() {
+    Navigator.pushNamed(context, '/profileDistributor');
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isWideScreen = MediaQuery.of(context).size.width > 600;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Distribuidor'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: () => _logout(context),
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
-              child: Text(
-                'Menú Distribuidor',
-                style: TextStyle(color: Colors.white, fontSize: 18),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.inventory),
-              title: Text('Inventario'),
-              onTap: _goToInventory, // Navegar al inventario
-            ),
-          ],
-        ),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(16),
-        child: FutureBuilder<List<dynamic>>(
-          future: _orders,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Center(child: Text('No tienes pedidos asignados.'));
-            } else {
-              final orders = snapshot.data!;
-              return ListView.builder(
-                itemCount: orders.length,
-                itemBuilder: (context, index) {
-                  final order = orders[index];
-
-                  // Verifica si las claves existen
-                  final clientId =
-                      order['clienteID'] ?? 'ID de cliente no disponible';
-                  final orderId =
-                      order['id_pedido'] ?? 'ID de pedido no disponible';
-                  final productsList =
-                      order['productos'] as List<dynamic>? ?? [];
-
-                  // Generar texto para productos
-                  final products = productsList.isNotEmpty
-                      ? productsList
-                          .map((p) =>
-                              '${p['id_producto'] ?? 'Producto desconocido'} (x${p['cantidad'] ?? 0})')
-                          .join(', ')
-                      : 'No hay productos';
-
-                  return Card(
-                    margin: EdgeInsets.symmetric(vertical: 8),
-                    child: ListTile(
-                      leading: Icon(Icons.shopping_cart),
-                      title: Text('Cliente: $clientId'),
-                      subtitle: Text('Productos: $products'),
-                      trailing: ElevatedButton(
-                        onPressed: () =>
-                            _updateOrderStatus(orderId), // Actualizar estado
-                        child: Text('Entregar'),
-                      ),
-                      onTap: order['estado'] == 'en progreso'
-                          ? () =>
-                              _viewMap(clientId) // Ver mapa si está en progreso
-                          : null,
-                    ),
-                  );
-                },
-              );
-            }
+        title: const Text('Distribuidor'),
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                if (!isWideScreen) {
+                  Scaffold.of(context).openDrawer();
+                } else {
+                  _toggleSidebar();
+                }
+              },
+            );
           },
         ),
+      ),
+      drawer: !isWideScreen
+          ? Drawer(
+              child: Container(
+                color: const Color(0xFF3B945E),
+                child: _buildSidebarContent(),
+              ),
+            )
+          : null,
+      body: Row(
+        children: [
+          if (isWideScreen && isSidebarVisible) _buildSidebar(),
+          Expanded(child: _buildOrdersList()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebar() {
+    return Container(
+      width: 250,
+      color: const Color(0xFF3B945E),
+      child: _buildSidebarContent(),
+    );
+  }
+
+  Widget _buildSidebarContent() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'Opciones',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.person, color: Colors.white),
+          title: const Text('Perfil', style: TextStyle(color: Colors.white)),
+          onTap: _goToProfile,
+        ),
+        ListTile(
+          leading: const Icon(Icons.inventory, color: Colors.white),
+          title:
+              const Text('Inventario', style: TextStyle(color: Colors.white)),
+          onTap: _goToInventory,
+        ),
+        ListTile(
+          leading: const Icon(Icons.logout, color: Colors.white),
+          title: const Text('Salir', style: TextStyle(color: Colors.white)),
+          onTap: () => _logout(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOrdersList() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: FutureBuilder<List<dynamic>>(
+        future: _orders,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Text('Error: ${snapshot.error}'),
+            );
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(
+              child: Text('No tienes pedidos asignados.'),
+            );
+          } else {
+            final orders = snapshot.data!;
+
+            return ListView.builder(
+              itemCount: orders.length,
+              itemBuilder: (context, index) {
+                final order = orders[index];
+                final clientId =
+                    order['clienteID'] ?? 'ID de cliente no disponible';
+                final orderId =
+                    order['id_pedido'] ?? 'ID de pedido no disponible';
+                final orderStatus = order['estado'] ?? 'Desconocido';
+                final productsList = order['productos'] as List<dynamic>? ?? [];
+
+                final products = productsList.isNotEmpty
+                    ? productsList
+                        .map((p) =>
+                            '${p['id_producto'] ?? 'Producto desconocido'} (x${p['cantidad'] ?? 0})')
+                        .join(', ')
+                    : 'No hay productos';
+                return Card(
+                  elevation: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: statusColors[orderStatus] ?? Colors.grey,
+                      child:
+                          const Icon(Icons.shopping_cart, color: Colors.white),
+                    ),
+                    title: Text('Cliente: $clientId'),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Productos: $products'),
+                        Text('Estado: $orderStatus'),
+                        Text('IdOrder: $orderId'),
+                      ],
+                    ),
+                    trailing: orderStatuses.containsKey(orderStatus)
+                        ? ElevatedButton(
+                            onPressed: () =>
+                                _updateOrderStatus(orderId, orderStatus),
+                            child: Text(orderStatus == 'pendiente'
+                                ? 'Entregar'
+                                : 'Completado'),
+                          )
+                        : null,
+                  ),
+                );
+              },
+            );
+          }
+        },
       ),
     );
   }

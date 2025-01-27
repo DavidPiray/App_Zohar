@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../api/api_service.dart';
+import '../../services/auth_service.dart';
 
 class DirectorScreen extends StatefulWidget {
   @override
@@ -7,7 +7,7 @@ class DirectorScreen extends StatefulWidget {
 }
 
 class _DirectorScreenState extends State<DirectorScreen> {
-  final ApiService apiService = ApiService();
+  final AuthService apiService = AuthService();
   void _logout(BuildContext context) async {
     await apiService.logout(); // Limpiar sesión
     Navigator.pushReplacementNamed(context, '/login'); // Redirigir al login
