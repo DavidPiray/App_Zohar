@@ -17,4 +17,9 @@ class RealtimeService {
   Stream<DatabaseEvent> listenToInventory(String distributorId) {
     return _database.ref('distribuidor/$distributorId/inventario').onValue;
   }
+
+  // Escuchar cambios en el estado
+  Stream<DatabaseEvent> listenToStatus(String orderId) {
+    return _database.ref('pedido/$orderId').onValue;
+  }
 }
