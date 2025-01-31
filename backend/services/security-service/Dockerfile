@@ -24,4 +24,4 @@ COPY ./backend/config/serviceAccountKey.json /app/config/serviceAccountKey.json
 EXPOSE 3001
 
 # Comando para iniciar el microservicio
-CMD ["node", "index.js"]
+CMD ["node", "security-service.js"]

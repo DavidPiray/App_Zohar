@@ -3,7 +3,7 @@ const Joi = require('joi');
 const registerSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
-  roles: Joi.array().items(Joi.string().valid('admin', 'cliente', 'distribuidor')).required(),
+  roles: Joi.array().items(Joi.string().valid('admin', 'cliente', 'distribuidor','gerente')).required(),
 });
 
 const loginSchema = Joi.object({
@@ -11,4 +11,9 @@ const loginSchema = Joi.object({
   password: Joi.string().required(),
 });
 
-module.exports = { registerSchema, loginSchema };
+const updatePasswordSchema = Joi.object({
+  oldPassword: Joi.string().min(6).required(),
+  newPassword: Joi.string().min(6).required(),
+});
+
+module.exports = { registerSchema, loginSchema, updatePasswordSchema };
