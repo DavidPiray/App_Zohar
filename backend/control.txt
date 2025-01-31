@@ -6,6 +6,8 @@ Control de versiones para microservicios
         Actualización de Validaciones del microservicio para evitar duplicidad
     Versión: v1.2
         Añade roles para cada endpoint y añade la configuración para docker
+    Versión: v1.3
+        Añade registro de auditoría a endpoints importantes
 
 - Microservicio Distribuidor
     Versión: v1.0
@@ -14,6 +16,8 @@ Control de versiones para microservicios
         Actualización de Validaciones del microservicio para evitar duplicidad
     Versión: v1.2
         Añade roles para cada endpoint y añade la configuración para docker
+    Versión: v1.3
+        Añade registro de auditoría a endpoints importantes
 
 - Microservicio Pedidos
     Versión: v1.0
@@ -22,6 +26,8 @@ Control de versiones para microservicios
         Actualización de Validaciones del microservicio para evitar duplicidad
     Versión: v1.2
         Añade roles para cada endpoint y añade la configuración para docker
+    Versión: v1.3
+        Añade registro de auditoría a endpoints importantes y mejora de lógica de crear pedido
 
 - Microservicio Seguridad
     Versión: v1.0
@@ -38,6 +44,8 @@ Control de versiones para microservicios
         Actualización de Validaciones del microservicio para evitar duplicidad
     Versión: v1.2
         Añade roles para cada endpoint y añade la configuración para docker
+    Versión: v1.3
+        Añade registro de auditoría a endpoints importantes
         
 - Microservicio Clientes
     Versión: v1.0
@@ -46,3 +54,5 @@ Control de versiones para microservicios
         Actualización de Validaciones del microservicio para evitar duplicidad
     Versión: v1.2
         Añade roles para cada endpoint y añade la configuración para docker
+    Versión: v1.3
+        Añade registro de auditoría a endpoints importantes
