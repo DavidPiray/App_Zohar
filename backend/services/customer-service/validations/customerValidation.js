@@ -7,6 +7,8 @@ const createCustomerSchema = Joi.object({
   direccion: Joi.string().required(),
   celular: Joi.string().required(),
   zonaID: Joi.string().required(),
+  distribuidorID: Joi.string().optional(),
+  foto: Joi.string().optional(),
   ubicacion: Joi.object({
     latitude: Joi.number().required(),
     longitude: Joi.number().required(),
@@ -20,6 +22,8 @@ const updateCustomerSchema = Joi.object({
   direccion: Joi.string().optional(),
   celular: Joi.string().optional(),
   zonaID: Joi.string().optional(),
+  distribuidorID: Joi.string().optional(),
+  foto: Joi.string().optional(),
   ubicacion: Joi.object({
     latitude: Joi.number().optional(),
     longitude: Joi.number().optional(),
