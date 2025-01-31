@@ -1,122 +1,95 @@
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: MainScreen(),
-    );
-  }
-}
+import '../../widgets/animated_button.dart';
+import '../../widgets/animated_logo.dart';
+import '../../widgets/animated_title.dart';
+import '../../core/styles/typography.dart';
 
 class MainScreen extends StatelessWidget {
+  const MainScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // Background Gradient
+          // Fondo degradado
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Color(0xFFB8E994), // Light green
-                  Color(0xFF6ABF69), // Medium green
-                  Color(0xFF3B945E), // Dark green
+                  Color(0xFFB8E994),
+                  Color(0xFF6ABF69),
+                  Color(0xFF3B945E),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
             ),
           ),
-          // Foreground Content
-          Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Title
-              Padding(
-                padding: const EdgeInsets.only(top: 60.0),
-                child: Text(
-                  'ZOHAR Agua Purificada',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              bool isWideScreen = constraints.maxWidth > 600;
 
-              // Center Illustration (Placeholder for now)
-              /*Expanded(
-                child: Center(
-                  child: Image.asset(
-                    'assets/images/river.jpg', // Replace with your asset
-                    height: 250,
-                  ),
-                ),
-              ),*/
-
-              // Buttons
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                child: Column(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/login');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF3B945E),
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Iniciar Sesión',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/register');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF6ABF69),
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Registrarse',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
-                          ),
-                        ),
+              return Row(
+                children: [
+                  if (isWideScreen) ...[
+                    // Diseño para pantallas grandes
+                    const Expanded(
+                      flex: 1,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          AnimatedLogo(size: 150),
+                          SizedBox(height: 30),
+                          AnimatedTitle(),
+                        ],
                       ),
                     ),
                   ],
-                ),
-              ),
-
-              // Bottom Padding
-              SizedBox(height: 40),
-            ],
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (!isWideScreen) ...[
+                          const AnimatedLogo(size: 100),
+                          const SizedBox(height: 25),
+                          const AnimatedTitle(),
+                          const SizedBox(height: 25),
+                        ],
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 52.0),
+                          child: Column(
+                            children: [
+                              AnimatedButton(
+                                label: 'Iniciar Sesión',
+                                routeName: '/login',
+                                backgroundColor: const Color(0xFF3B945E),
+                                maxWidth: isWideScreen ? 300 : double.infinity,
+                                textStyle: AppTypography.buttonText.copyWith(
+                                  fontSize: isWideScreen ? 20 : 18,
+                                ),
+                              ),
+                              const SizedBox(height: 26),
+                              AnimatedButton(
+                                label: 'Registrate',
+                                routeName: '/register',
+                                backgroundColor: const Color.fromARGB(255, 86, 168, 84),
+                                maxWidth: isWideScreen ? 300 : double.infinity,
+                                textStyle: AppTypography.buttonText.copyWith(
+                                  fontSize: isWideScreen ? 20 : 18,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

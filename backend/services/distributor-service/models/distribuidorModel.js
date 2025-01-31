@@ -1,27 +1,6 @@
-const db = require('../shared/utils/firebase');
+const {db} = require('../shared/utils/firebase');
 
 const Distributor = {
-  // Verificar si ya existe un ID repetido
-  async existsById(id_distribuidor) {
-    const doc = await db.collection('distribuidor').doc(id_distribuidor).get();
-    return doc.exists;
-  },
-
-  // Crear un distribuidor
-  async createDistributor(distributorData) {
-    const { id_distribuidor } = distributorData;
-    // Verificar duplicidad en ID
-    const exists = await this.existsById(id_distribuidor);
-    // console.log(exists);
-    const distributorRef = db.collection('distribuidor').doc(id_distribuidor);
-    if (exists) {
-      return { error: 'Distribuidor con ID repetido' };
-    }
-    // Crear el documento con ID manual
-    await distributorRef.set(distributorData);
-    return { message: 'Distribuidor creado con éxito' };
-  },
-
   // Lógica para el producto
   // Agregar un producto al inventario del distribuidor
   async addProductToInventory(id_distribuidor, productData) {
@@ -31,7 +10,6 @@ const Distributor = {
     // Verificar si el producto ya existe en el inventario
     const productDoc = await productRef.get();
     if (productDoc.exists) {
-      console.log('El producto ya existe en el inventario del distribuidor');
       throw new Error('El producto ya existe en el inventario del distribuidor');
     }
 
@@ -66,7 +44,7 @@ const Distributor = {
     const newStock = currentStock + cantidad;
 
     if (newStock < 0) {
-      throw new Error('Stock insuficiente');
+      throw new Error('Stock insuficiente para reducir la cantidad solicitada');
     }
 
     await productRef.update({ stock: newStock });
@@ -81,7 +59,28 @@ const Distributor = {
       .doc(id_producto);
 
     await productRef.delete();
-    return { message: 'Producto eliminado del inventario' };
+    return { message: 'Producto eliminado del inventario del distribuidor' };
+  },
+
+  // Logica del Distribuidor
+  // Verificar si ya existe un ID repetido
+  async existsById(id_distribuidor) {
+    const doc = await db.collection('distribuidor').doc(id_distribuidor).get();
+    return doc.exists;
+  },
+
+  // Crear un distribuidor
+  async createDistributor(distributorData) {
+    const { id_distribuidor } = distributorData;
+    // Verificar duplicidad en ID
+    const exists = await this.existsById(id_distribuidor);
+    const distributorRef = db.collection('distribuidor').doc(id_distribuidor);
+    if (exists) {
+      return { error: 'Distribuidor con ID repetido' };
+    }
+    // Crear el documento con ID manual
+    await distributorRef.set(distributorData);
+    return { message: 'Distribuidor creado con éxito!' };
   },
 
   // Obtener distribuidor por ID
@@ -101,7 +100,7 @@ const Distributor = {
   async updateDistributor(id_distribuidor, updatedData) {
     const distributorRef = db.collection('distribuidor').doc(id_distribuidor);
     await distributorRef.update(updatedData);
-    return { message: 'Distribuidor actualizado con éxito' };
+    return { message: 'Distribuidor actualizado con éxito!' };
   },
 
   // Eliminar un distribuidor
@@ -112,13 +111,32 @@ const Distributor = {
       return { error: 'Distribuidor no encontrado' };
     }
     await distributorRef.delete();
-    return { message: 'Distribuidor eliminado con éxito' };
+    return { message: 'Distribuidor eliminado con éxito!' };
   },
 
   // Obtener una zona por Distribuidor
   async getDistributorsByZone(zoneID) {
     const snapshot = await db.collection('distribuidor').where('zonaAsignada', '==', zoneID).get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+
+  // Buscar clientes por Filtros
+  async searchDistributor(filters) {
+    let query = db.collection('distribuidor');
+
+    if (filters.nombre) {
+      query = query.where('nombre', '==', filters.nombre);
+    }
+    if (filters.email) {
+      query = query.where('email', '==', filters.email);
+    }
+    if (filters.zonaAsignada) {
+      query = query.where('zonaAsignada', '==', filters.zonaAsignada);
+    }
+
+    const snapshot = await query.get();
+    const customers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return customers;
   },
 };
 

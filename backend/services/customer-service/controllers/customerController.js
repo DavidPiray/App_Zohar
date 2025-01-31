@@ -1,6 +1,6 @@
 const Customer = require('../models/customerModel');
 const { createCustomerSchema, updateCustomerSchema } = require('../validations/customerValidation');
-
+const { logAuditEvent } = require('../shared/models/auditModel');
 
 const CustomerController = {
   // Crear un cliente
@@ -13,12 +13,22 @@ const CustomerController = {
       ...req.body,
       fechaCreacion: new Date(),
     };
-
     try {
       const response = await Customer.createCustomer(cliente);
+      if (response.error){
+        return res.status(404).json({error: response.error});    
+      }
       res.status(201).json(response);
+      // Registrar evento de auditoría
+      await logAuditEvent(
+        'Crear',
+        'Clientes',
+        response.id, // ID del cliente creado
+        req.user.email, // Usuario autenticado (de req.user)
+      );
     } catch (error) {
-      res.status(500).json({ error: 'Fallo al crear un cliente' });
+      console.error('Fallo al crear un cliente:', error.message);
+      res.status(500).json({ error: 'Fallo al crear el cliente: ' + error.message });
     }
   },
 
@@ -29,7 +39,8 @@ const CustomerController = {
       const customers = await Customer.getPaginatedCustomers(parseInt(page, 10), parseInt(limit, 10));
       res.status(200).json({ page, limit, total: customers.length, customers });
     } catch (error) {
-      res.status(500).json({ error: 'Fallo al encontrar clientes' });
+      console.error('Error al obtener todos los cliente:', error.message);
+      res.status(500).json({ error: 'Fallo al obtener la lista de clientes: ' + error.message });
     }
   },
 
@@ -42,7 +53,8 @@ const CustomerController = {
       }
       res.status(200).json(customer);
     } catch (error) {
-      res.status(500).json({ error: 'Fallo al conseguir el cliente' });
+      console.error('Error al obtener un cliente por ID:', error.message);
+      res.status(500).json({ error: 'Fallo al obtener la información el cliente: ' + error.message });
     }
   },
 
@@ -53,36 +65,57 @@ const CustomerController = {
       return res.status(400).json({ error: error.details[0].message });
     }
     try {
+      const oldData = await Customer.getCustomerById(req.params.id);
       const response = await Customer.updateCustomer(req.params.id, req.body);
+      // Registrar evento de auditoría
+      await logAuditEvent(
+        'Actualizar',
+        'Clientes',
+        req.params.id,
+        req.user.email,
+        {
+          oldValue: oldData,
+          newValue: req.body,
+        }
+      );
       res.status(200).json(response);
     } catch (error) {
-      res.status(500).json({ error: 'Fallo al actualizar el cliente' });
+      console.error('Fallo al actualizar un cliente:', error.message);
+      res.status(500).json({ error: 'Fallo al actualizar los datos del cliente: ' + error.message});
     }
   },
 
   // ELiminar un cliente
   async delete(req, res) {
     try {
+      const oldData = await Customer.getCustomerById(req.params.id);
       const response = await Customer.deleteCustomer(req.params.id);
-      if (response.error) {
-        return res.status(404).json({ error: response.error });
-      }
       res.status(200).json(response);
+      // Registrar evento de auditoría
+      await logAuditEvent(
+        'Eliminar',
+        'Clientes',
+        req.params.id,
+        req.user.email,
+        { oldValue: oldData }
+      );
     } catch (error) {
-      res.status(500).json({ error: 'Fallo al eliminar un cliente' });
+      console.error('Error al eliminar un cliente:', error.message);
+      res.status(500).json({ error: 'Fallo al eliminar un cliente: ' + error.message });
     }
   },
 
-  // Buscar un cliente
+  // Buscar un cliente por filtro
   async search(req, res) {
     try {
       const customers = await Customer.searchCustomers(req.query);
       if (customers.length === 0) {
-        return res.status(404).json({ message: 'Clientes no encontrados' });
+        return res.status(404).json({ message: 'Cliente no encontrado' });
       }
       res.status(200).json(customers);
     } catch (error) {
-      res.status(500).json({ error: 'Fallo al buscar clientes' });
+      console.error('Error al buscar un cliente:', error.message);
+      res.status(500).json({ error: 'Fallo al buscar el cliente: ' + error.message });
     }
   },
 

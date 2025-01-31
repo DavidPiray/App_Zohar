@@ -47,7 +47,13 @@ dependencies:
   google_maps_flutter_web: ^0.5.10
   image_picker: ^1.1.2
   permission_handler: ^11.3.1
-  fl_chart: ^0.40.0
+  fl_chart: ^0.70.2
+  flutter_secure_storage: ^9.2.4
+  intl: ^0.20.1
+  firebase_database: ^11.3.1
+  pdf: ^3.11.2
+  printing: ^5.14.0
+  syncfusion_flutter_charts: ^28.1.41
  
 
 dev_dependencies:
@@ -72,7 +78,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
-    - assets/images/river.jpg
+    - assets/images/
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../api/api_service.dart';
+import '../../services/product_service.dart';
 
 class ListProductScreen extends StatefulWidget {
   @override
@@ -7,7 +7,7 @@ class ListProductScreen extends StatefulWidget {
 }
 
 class _ListProductScreenState extends State<ListProductScreen> {
-  final ApiService apiService = ApiService();
+  final ProductService productService = ProductService();
   List<dynamic> products = [];
   bool isLoading = true;
 
@@ -19,7 +19,7 @@ class _ListProductScreenState extends State<ListProductScreen> {
 
   Future<void> _fetchProducts() async {
     try {
-      final result = await apiService.getProducts();
+      final result = await productService.getProducts();
       setState(() {
         products = result;
         isLoading = false;
@@ -84,7 +84,7 @@ class _ListProductScreenState extends State<ListProductScreen> {
           actions: [
             TextButton(
               onPressed: () async {
-                await apiService.updateProduct(product['id_producto'], {
+                await productService.updateProduct(product['id_producto'], {
                   'nombre': name,
                   'descripcion': description,
                   'precio_cliente':
@@ -160,7 +160,7 @@ class _ListProductScreenState extends State<ListProductScreen> {
           actions: [
             TextButton(
               onPressed: () async {
-                await apiService.addProduct({
+                await productService.addProduct({
                   'id_producto': id,
                   'nombre': name,
                   'descripcion': description,

@@ -1,4 +1,4 @@
-const db = require('../shared/utils/firebase');
+const {db} = require('../shared/utils/firebase');
 
 const Customer = {
   // Validar si un cliente existe por email o celular
@@ -6,7 +6,7 @@ const Customer = {
     const snapshot = await db.collection('clientes')
       .where('email', '==', email)
       .get();
-    
+
     const phoneSnapshot = await db.collection('clientes')
       .where('celular', '==', celular)
       .get();
@@ -17,15 +17,16 @@ const Customer = {
   // Crear un cliente
   async createCustomer(customerData) {
     const { email, celular } = customerData;
-    const exists = await this.existsByEmailOrPhone(email,celular);
+    const exists = await this.existsByEmailOrPhone(email, celular);
     const customerRef = db.collection('clientes');
-    if(exists){
-      return { error: 'Distribuidor con ID repetido' };
+    if (exists) {
+      return { error: 'Ya existe una cuenta vinculada al correo y/o celular ingresados.' };
     }
     await customerRef.add(customerData);
     return { message: 'Cliente creado con éxito!' };
   },
 
+  // Obtener clientes por paginas
   async getPaginatedCustomers(page = 1, limit = 10) {
     const offset = (page - 1) * limit;
 
@@ -39,6 +40,7 @@ const Customer = {
     return customers;
   },
 
+  // Buscar clientes por Filtros
   async searchCustomers(filters) {
     let query = db.collection('clientes');
 
@@ -57,23 +59,27 @@ const Customer = {
     return customers;
   },
 
+  // Obtener cliente por ID
   async getCustomerById(id_cliente) {
     const customerRef = db.collection('clientes').doc(id_cliente);
     const customerDoc = await customerRef.get();
     return customerDoc.exists ? customerDoc.data() : null;
   },
 
+  // Obtener todos los clientes
   async getAllCustomers() {
     const snapshot = await db.collection('clientes').get();
     return snapshot.docs.map(doc => doc.data());
   },
 
+  // Actualizar un cliente por ID
   async updateCustomer(id_cliente, updatedData) {
     const customerRef = db.collection('clientes').doc(id_cliente);
     await customerRef.update(updatedData);
     return { message: 'Cliente actualizado con éxito!' };
   },
 
+  // Eliminar un cliente por ID
   async deleteCustomer(id_cliente) {
     const customerRef = db.collection('clientes').doc(id_cliente);
     const customerDoc = await customerRef.get();
