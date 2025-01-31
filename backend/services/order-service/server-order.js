@@ -8,13 +8,13 @@ dotenv.config({ path: __dirname + '/.env' });
 
 const app = express();
 
-// Middleware
+// Permitir solicitudes desde cualquier origen
 app.use(cors());
 app.use(bodyParser.json());
 app.use(authMiddleware); // Protege todos los endpoints
-app.use('/api/pedido', routes);
+app.use('/pedidos', routes);
 
 const PORT = process.env.ORDER_SERVICE_PORT || 3005;
 app.listen(PORT, () => {
-  console.log(`El servicio de Pedidos esta corriendo en el puerto ${PORT}`);
+  console.log(`El servicio de Pedidos esta corriendo -> http://localhost:${PORT}/pedidos`);
 });
