@@ -8,14 +8,13 @@ dotenv.config({ path: __dirname + '/.env' });
 
 const app = express();
 
-// Middleware
+// Permitir solicitudes desde cualquier origen
 app.use(cors());
 app.use(bodyParser.json());
 app.use(authMiddleware); // Protege todos los endpoints
-app.use('/api/zonas', routes);
+app.use('/zonas', routes);
 
 const PORT = process.env.ZONE_SERVICE_PORT || 3003;
 app.listen(PORT, () => {
-    console.log(`El servicio de zonas esta corriendo -> http://localhost:${PORT}`);
-    console.log(`Para cerra el servidor presione CTRL + C`);;
+    console.log(`El servicio de Zonas esta corriendo -> http://localhost:${PORT}/zonas`);
 });
