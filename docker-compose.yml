@@ -1,47 +1,86 @@
 version: '3.8'
+
 services:
-  customer-service:
-    build: ./microservices/customer-service
+  security-service:
+    build:
+      context: .
+      dockerfile: ./backend/services/security-service/Dockerfile
+    volumes:
+      - ./backend:/app/backend
     ports:
       - "3001:3001"
-    networks:
-      - app_network
-  distributor-service:
-    build: ./microservices/distributor-service
+    environment:
+      - JWT_SECRET=kngmdapg14
+      - TOKEN_EXPIRATION=1h
+    depends_on:
+      - firebase
+
+  customer-service:
+    build:
+      context: .
+      dockerfile: ./backend/services/customer-service/Dockerfile
+    volumes:
+      - ./backend:/app/backend
     ports:
       - "3002:3002"
-    networks:
-      - app_network
-  inventory-service:
-    build: ./microservices/inventory-service
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - firebase
+
+  zone-service:
+    build:
+      context: .
+      dockerfile: ./backend/services/zone-service/Dockerfile
+    volumes:
+      - ./backend:/app/backend
     ports:
       - "3003:3003"
-    networks:
-      - app_network
-  order-service:
-    build: ./microservices/order-service
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - firebase
+
+  distributor-service:
+    build:
+      context: .
+      dockerfile: ./backend/services/distributor-service/Dockerfile
+    volumes:
+      - ./backend:/app/backend
     ports:
       - "3004:3004"
-    networks:
-      - app_network
-  geolocation-service:
-    build: ./microservices/geolocation-service
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - firebase
+
+  order-service:
+    build:
+      context: .
+      dockerfile: ./backend/services/order-service/Dockerfile
+    volumes:
+      - ./backend:/app/backend
     ports:
       - "3005:3005"
-    networks:
-      - app_network
-  web-app:
-    build: ./apps/web-app
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - firebase
+
+  product-service:
+    build:
+      context: .
+      dockerfile: ./backend/services/product-service/Dockerfile
+    volumes:
+      - ./backend:/app/backend
     ports:
-      - "8080:8080"
-    networks:
-      - app_network
-  mobile-app:
-    build: ./apps/mobile-app
-    ports:
-      - "8100:8100"
-    networks:
-      - app_network
-networks:
-  app_network:
-    driver: bridge
+      - "3006:3006"
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - firebase
+
+  firebase:
+    image: google/cloud-sdk:latest
+    volumes:
+      - ./firebase:/root/.config/firebase

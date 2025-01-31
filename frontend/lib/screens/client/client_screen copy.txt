@@ -1,0 +1,299 @@
+import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
+import '../../services/product_service.dart';
+import '../../services/orders_service.dart';
+
+class ClientScreen extends StatefulWidget {
+  @override
+  _ClientScreenState createState() => _ClientScreenState();
+}
+
+class _ClientScreenState extends State<ClientScreen> {
+  final AuthService apiService = AuthService();
+  final ProductService productService = ProductService();
+  final OrdersService ordersService = OrdersService();
+  late Future<List<dynamic>> _products; // Productos obtenidos del API
+  Map<String, int> selectedQuantities =
+      {}; // Cantidades seleccionadas por producto
+
+  @override
+  void initState() {
+    super.initState();
+    _products =
+        productService.getProducts(); // Obtener productos desde el backend
+  }
+
+  void _logout(BuildContext context) async {
+    await apiService.logout(); // Limpiar sesión
+    Navigator.pushReplacementNamed(context, '/login'); // Redirigir al login
+  }
+
+  void _buyProducts() {
+    // Validación: Verificar si hay productos seleccionados
+    if (selectedQuantities.isEmpty ||
+        selectedQuantities.values.every((quantity) => quantity == 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Por favor, selecciona al menos un producto.')),
+      );
+      return;
+    }
+
+    // Mostrar el resumen antes de confirmar el pedido
+    // Mostrar el resumen antes de confirmar el pedido
+    showDialog(
+      context: context,
+      builder: (context) {
+        return FutureBuilder<List<dynamic>>(
+          future: _products,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return AlertDialog(
+                title: Text('Error'),
+                content: Text(
+                    'Ocurrió un error al cargar los productos: ${snapshot.error}'),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('Cerrar'),
+                  ),
+                ],
+              );
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return AlertDialog(
+                title: Text('Sin productos'),
+                content: Text('No hay productos disponibles para mostrar.'),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('Cerrar'),
+                  ),
+                ],
+              );
+            } else {
+              final products = snapshot.data!;
+              double total = 0.0;
+              List<Widget> resumen = selectedQuantities.entries.map((entry) {
+                final productId = entry.key;
+                final quantity = entry.value;
+
+                if (quantity > 0) {
+                  final product =
+                      products.firstWhere((p) => p['id_producto'] == productId);
+                  total += product['precio_cliente'] * quantity;
+                  return ListTile(
+                    title: Text(product['nombre']),
+                    subtitle: Text('Cantidad: $quantity'),
+                    trailing: Text(
+                        'Subtotal: \$${(product['precio_cliente'] * quantity).toStringAsFixed(2)}'),
+                  );
+                }
+                return SizedBox.shrink();
+              }).toList();
+
+              return AlertDialog(
+                title: Text('Resumen del Pedido'),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...resumen,
+                      Divider(),
+                      ListTile(
+                        title: Text('Total:'),
+                        trailing: Text('\$${total.toStringAsFixed(2)}'),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('Cancelar'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _confirmPurchase(); // Confirmar la compra
+                    },
+                    child: Text('Confirmar Pedido'),
+                  ),
+                ],
+              );
+            }
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmPurchase() async {
+    // Aquí puedes implementar la lógica para realizar el pedido con la API
+    final currentContext =
+        context; // Captura el contexto antes de entrar en un async gap
+
+    try {
+      // Crear un mapa de productos seleccionados y cantidades
+      final orderDetails = {
+        'id_pedido':
+            'order${DateTime.now().millisecondsSinceEpoch}', // Genera un ID único (puedes ajustar esto según las necesidades)
+        //'order10',
+        'clienteID':
+            'client1', // Reemplaza con el ID real del cliente (extraído de la base de datos si es necesario)
+        'estado': 'pendiente', // Estado inicial del pedido
+        'productos': selectedQuantities.entries
+            .where((entry) => entry.value > 0)
+            .map((entry) => {
+                  'id_producto': entry.key,
+                  'cantidad': entry.value,
+                })
+            .toList(),
+      };
+
+      // Realizar la solicitud al API de pedidos
+      await ordersService.createOrder(orderDetails);
+
+      // Mostrar mensaje de éxito
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pedido realizado con éxito.')),
+      );
+
+      // Reiniciar las cantidades seleccionadas
+      setState(() {
+        selectedQuantities.clear();
+      });
+    } catch (e) {
+      // Mostrar mensaje de error
+      ScaffoldMessenger.of(currentContext).showSnackBar(
+        SnackBar(content: Text('Error al realizar el pedido: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Cliente'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: () => _logout(context), // Botón para cerrar sesión
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // Banner o logo
+            /* Container(
+              width: double.infinity,
+              height: 150,
+              color: Colors.grey[300],
+              child: const Center(
+                child: Text(
+                  'Banner o Logo',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ), */
+            const SizedBox(height: 20),
+            // Lista de productos
+            
+            Expanded(
+              child: FutureBuilder<List<dynamic>>(
+                future: _products,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text('No hay productos disponibles'));
+                  } else {
+                    final products = snapshot.data!;
+                    return ListView.builder(
+                      itemCount: products.length,
+                      itemBuilder: (context, index) {
+                        final product = products[index];
+                        final productId = product['id_producto'];
+                        final productName = product['nombre'];
+                        final productDescription = product['descripcion'];
+                        final productPrice = product['precio_cliente'];
+
+                        // Inicializar la cantidad seleccionada si no existe
+                        if (!selectedQuantities.containsKey(productId)) {
+                          selectedQuantities[productId] = 0;
+                        }
+
+                        return Card(
+                          margin: EdgeInsets.symmetric(vertical: 8),
+                          child: ListTile(
+                            leading: Icon(Icons.local_drink),
+                            title: Text(productName),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(productDescription),
+                                Text(
+                                    'Precio: \$${productPrice.toStringAsFixed(2)}'),
+                              ],
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.remove),
+                                  onPressed: () {
+                                    setState(() {
+                                      if (selectedQuantities[productId]! > 0) {
+                                        selectedQuantities[productId] =
+                                            selectedQuantities[productId]! - 1;
+                                      }
+                                    });
+                                  },
+                                ),
+                                Text('${selectedQuantities[productId]}'),
+                                IconButton(
+                                  icon: Icon(Icons.add),
+                                  onPressed: () {
+                                    setState(() {
+                                      selectedQuantities[productId] =
+                                          selectedQuantities[productId]! + 1;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+                },
+              ),
+            ),
+            // Botón de comprar
+            ElevatedButton.icon(
+              onPressed: _buyProducts,
+              icon: Icon(Icons.shopping_cart),
+              label: Text('HACER PEDIDO'),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                textStyle: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
