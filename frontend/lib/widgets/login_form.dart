@@ -44,6 +44,16 @@ class LoginForm extends StatelessWidget {
               style: const TextStyle(color: Colors.black),
             ),
             const SizedBox(height: 15),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/recuperar cuenta');
+              },
+              child: const Text(
+                "¿Olvidaste tu contraseña?",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 15),
             TextField(
               controller: passwordController,
               decoration: InputDecoration(

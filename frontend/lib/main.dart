@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/report_provider.dart'; // Asegúrate de importar esto
 import 'firebase_options.dart'; // Archivo generado por FlutterFire CLI
 import 'app_routes.dart';
 
@@ -15,6 +16,7 @@ void main() async {
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider(create: (_) => AuthProvider()),
     //ChangeNotifierProvider(create: (_) => RealtimeProvider()),
+    ChangeNotifierProvider(create: (_) => ReportProvider()), 
   ], child: const MyApp()));
 }
 

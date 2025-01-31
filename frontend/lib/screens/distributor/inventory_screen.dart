@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/distributor_service.dart';
@@ -12,6 +13,7 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen> {
   final AuthService authService = AuthService();
   final DistributorService distributorService = DistributorService();
+
   late Future<List<dynamic>> _inventory; // Inventario del distribuidor
   bool isSidebarVisible = true;
 
@@ -30,6 +32,48 @@ class _InventoryScreenState extends State<InventoryScreen> {
     setState(() {
       isSidebarVisible = !isSidebarVisible;
     });
+  }
+
+  void _showRestockForm(BuildContext context) async {
+    final inventory = await _inventory;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Recargar Botellones'),
+          content: RestockForm(
+            inventory: inventory,
+            onSubmit: (productId, quantity) {
+              _restockProduct("dist1", productId, quantity);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _restockProduct(
+      String distributorId, String productId, int quantity) async {
+    try {
+      final ref = FirebaseFirestore.instance.collection('recargas');
+      await ref.add({
+        'distribuidorId': distributorId,
+        'productoId': productId,
+        'cantidad': quantity,
+        'fecha': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Solicitud de recarga enviada con éxito.')),
+      );
+    } catch (e) {
+      debugPrint('Error al enviar la solicitud de recarga: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Error al enviar la solicitud de recarga.')),
+      );
+    }
   }
 
   @override
@@ -53,6 +97,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
             );
           },
         ),
+        actions: [
+          TextButton(
+            onPressed: () => _showRestockForm(context),
+            child: const Text('Recargar Botellones',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
       drawer: !isWideScreen
           ? Drawer(
@@ -119,7 +170,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
         } else if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('No tienes productos en inventario.'));
+          return const Center(
+              child: Text('No tienes productos en inventario.'));
         } else {
           final inventory = snapshot.data!;
           return ListView.builder(
@@ -141,6 +193,96 @@ class _InventoryScreenState extends State<InventoryScreen> {
           );
         }
       },
+    );
+  }
+}
+
+class RestockForm extends StatefulWidget {
+  final List<dynamic> inventory;
+  final Function(String productId, int quantity) onSubmit;
+
+  const RestockForm({
+    Key? key,
+    required this.inventory,
+    required this.onSubmit,
+  }) : super(key: key);
+
+  @override
+  _RestockFormState createState() => _RestockFormState();
+}
+
+class _RestockFormState extends State<RestockForm> {
+  String? selectedProduct;
+  final TextEditingController quantityController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.inventory.isNotEmpty) {
+      selectedProduct = widget.inventory.first['id']; // Selección por defecto
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        DropdownButton<String>(
+          value: selectedProduct,
+          onChanged: (value) {
+            setState(() {
+              selectedProduct = value;
+            });
+          },
+          hint: const Text('Selecciona un producto'),
+          items: widget.inventory.map<DropdownMenuItem<String>>((product) {
+            return DropdownMenuItem<String>(
+              value: product['id'],
+              child: Text(product['nombre']),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: quantityController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Cantidad',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: () {
+            if (selectedProduct != null && quantityController.text.isNotEmpty) {
+              try {
+                final quantity = int.parse(quantityController.text);
+                if (quantity > 0) {
+                  widget.onSubmit(selectedProduct!, quantity);
+                  Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('La cantidad debe ser mayor a 0')),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Ingresa un número válido')),
+                );
+              }
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content:
+                        Text('Selecciona un producto y una cantidad válida')),
+              );
+            }
+          },
+          child: const Text('Solicitar'),
+        ),
+      ],
     );
   }
 }

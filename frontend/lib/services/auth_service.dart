@@ -49,4 +49,47 @@ class AuthService {
       throw Exception('Error al cerrar sesión: $e');
     }
   }
+
+  // Método para actualizar la contraseña
+  Future<bool> updatePassword({
+    required String clientId,
+    required String oldPassword,
+    required String newPassword,
+    required String email,
+  }) async {
+    try {
+      final String? token = await TokenManager.getToken();
+      if (token == null || token.isEmpty) {
+        throw Exception('No hay un token válido. Inicia sesión nuevamente.');
+      }
+
+      final response = await _dio.put(
+        '/users/$clientId/password',
+        data: {
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+          'email': email,
+        },
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return true; // Contraseña actualizada con éxito
+      } else {
+        throw Exception(
+            'Error del servidor: ${response.statusMessage ?? 'Desconocido'}');
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final errorMessage = e.response?.data['message'] ?? 'Error desconocido';
+        throw Exception('Error del servidor: $errorMessage');
+      } else {
+        throw Exception('Error de red: Servidor no disponible actualmente');
+      }
+    } catch (e) {
+      throw Exception('Error inesperado: $e');
+    }
+  }
 }

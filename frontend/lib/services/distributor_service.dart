@@ -13,10 +13,13 @@ class DistributorService {
   // Agregar distribuidor
   Future<void> addDistributor(Map<String, String> distributor) async {
     try {
-      final response = await _dio2.post('/', data: distributor);
-
+      final response = await _dioDist.post('/', data: distributor);
+      print('------------------------');
+      print(distributor);
+      print('------------------------');
+      print(response);
       if (response.statusCode != 201) {
-        throw Exception('Error al agregar distribuidor: ${response.data}');
+        throw Exception('Error al agregar distribuidor: ${response.statusMessage}');
       }
       try {
         // Preparar datos para mapear a "users"
@@ -148,7 +151,7 @@ class DistributorService {
   // Método para obtener distribuidores
   Future<List<dynamic>> getDistributors() async {
     try {
-      final response = await _dio.get('/');
+      final response = await _dioDist.get('/');
       if (response.statusCode == 200) {
         return response.data;
       } else {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:frontend/services/product_service.dart';
+import 'package:intl/intl.dart';
 import '../../services/distributor_service.dart';
 import '../../services/orders_service.dart';
 import '../../services/auth_service.dart';
@@ -16,10 +18,12 @@ class DistributorScreen extends StatefulWidget {
 class _DistributorScreenState extends State<DistributorScreen> {
   final DistributorService distributorService = DistributorService();
   final OrdersService ordersService = OrdersService();
+  final ProductService productService = ProductService();
   final AuthService authService = AuthService();
   final RealtimeService realtimeService = RealtimeService();
 
   late Future<List<dynamic>> _orders;
+  late Future<List<dynamic>> _products;
   late Stream<DatabaseEvent> _realtimeStream;
 
   Map<String, String> orderStatuses = {
@@ -35,10 +39,20 @@ class _DistributorScreenState extends State<DistributorScreen> {
   String distributorId = "dist1"; // Distribuidor asignado (temporal)
   bool isSidebarVisible = true;
 
+  // Filtros
+  String selectedStatus = 'todos';
+  DateTime? selectedDate;
+  String? selectedProduct;
+
+  // Paginación
+  int currentPage = 1;
+  final int itemsPerPage = 5;
+
   @override
   void initState() {
     super.initState();
     _fetchOrders();
+    _fetchProducts();
     _listenToRealtimeUpdates();
   }
 
@@ -48,21 +62,66 @@ class _DistributorScreenState extends State<DistributorScreen> {
     });
   }
 
+  void _fetchProducts() {
+    setState(() {
+      _products = productService.getProducts();
+    });
+  }
+
   void _listenToRealtimeUpdates() {
-    _realtimeStream = realtimeService
-        .listenToOrders(); // Escucha los cambios en todos los pedidos
+    _realtimeStream = realtimeService.listenToOrders();
     _realtimeStream.listen((event) {
       final data = event.snapshot.value;
-      // Si hay cambios en Firebase, vuelve a cargar los pedidos
       if (data != null) {
         _fetchOrders();
       }
     });
   }
 
+  List<dynamic> _filterAndSortOrders(List<dynamic> orders) {
+    orders = orders.where((order) => order['estado'] != 'completado').toList();
+
+    if (selectedStatus != 'todos') {
+      orders =
+          orders.where((order) => order['estado'] == selectedStatus).toList();
+    }
+    if (selectedDate != null) {
+      final formattedSelectedDate =
+          DateFormat('yyyy-MM-dd').format(selectedDate!);
+      orders = orders.where((order) {
+        final rawTimestamp = order['fechaCreacion'];
+
+        if (rawTimestamp == null) return false;
+
+        final DateTime orderDate = DateTime.fromMillisecondsSinceEpoch(
+            rawTimestamp['_seconds'] * 1000);
+
+        final formattedOrderDate = DateFormat('yyyy-MM-dd').format(orderDate);
+        return formattedOrderDate == formattedSelectedDate;
+      }).toList();
+    }
+    if (selectedProduct != null) {
+      orders = orders.where((order) {
+        final products = order['productos'] as List<dynamic>? ?? [];
+        return products.any((p) => p['id_producto'] == selectedProduct);
+      }).toList();
+    }
+
+    orders.sort((a, b) => (b['fecha'] ?? '').compareTo(a['fecha'] ?? ''));
+    return orders;
+  }
+
+  void _clearFilters() {
+    setState(() {
+      selectedStatus = 'todos';
+      selectedDate = null;
+      selectedProduct = null;
+      currentPage = 1;
+    });
+  }
+
   void _logout(BuildContext context) async {
     await authService.logout();
-    // ignore: use_build_context_synchronously
     Navigator.pushReplacementNamed(context, '/login');
   }
 
@@ -101,6 +160,14 @@ class _DistributorScreenState extends State<DistributorScreen> {
 
   void _goToProfile() {
     Navigator.pushNamed(context, '/profileDistributor');
+  }
+
+  void _goToReports() {
+    Navigator.pushNamed(
+      context,
+      '/reporte-distribuidor',
+      arguments: 'dist1',
+    );
   }
 
   @override
@@ -178,6 +245,11 @@ class _DistributorScreenState extends State<DistributorScreen> {
           onTap: _goToInventory,
         ),
         ListTile(
+          leading: const Icon(Icons.report, color: Colors.white),
+          title: const Text('Reportes', style: TextStyle(color: Colors.white)),
+          onTap: _goToReports,
+        ),
+        ListTile(
           leading: const Icon(Icons.logout, color: Colors.white),
           title: const Text('Salir', style: TextStyle(color: Colors.white)),
           onTap: () => _logout(context),
@@ -189,73 +261,236 @@ class _DistributorScreenState extends State<DistributorScreen> {
   Widget _buildOrdersList() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: FutureBuilder<List<dynamic>>(
-        future: _orders,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text('No tienes pedidos asignados.'),
-            );
-          } else {
-            final orders = snapshot.data!;
+      child: Column(
+        children: [
+          _buildFilters(),
+          Expanded(
+            child: FutureBuilder<List<dynamic>>(
+              future: _orders,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Error: ${snapshot.error}'),
+                  );
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(
+                    child: Text('No tienes pedidos asignados.'),
+                  );
+                } else {
+                  final filteredOrders = _filterAndSortOrders(snapshot.data!);
+                  final totalPages =
+                      (filteredOrders.length / itemsPerPage).ceil();
+                  final paginatedOrders = filteredOrders
+                      .skip((currentPage - 1) * itemsPerPage)
+                      .take(itemsPerPage)
+                      .toList();
 
-            return ListView.builder(
-              itemCount: orders.length,
-              itemBuilder: (context, index) {
-                final order = orders[index];
-                final clientId =
-                    order['clienteID'] ?? 'ID de cliente no disponible';
-                final orderId =
-                    order['id_pedido'] ?? 'ID de pedido no disponible';
-                final orderStatus = order['estado'] ?? 'Desconocido';
-                final productsList = order['productos'] as List<dynamic>? ?? [];
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: paginatedOrders.length,
+                          itemBuilder: (context, index) {
+                            final order = paginatedOrders[index];
+                            final clientId = order['clienteID'] ??
+                                'ID de cliente no disponible';
+                            final orderId = order['id_pedido'] ??
+                                'ID de pedido no disponible';
+                            final orderStatus =
+                                order['estado'] ?? 'Desconocido';
+                            final productsList =
+                                order['productos'] as List<dynamic>? ?? [];
 
-                final products = productsList.isNotEmpty
-                    ? productsList
-                        .map((p) =>
-                            '${p['id_producto'] ?? 'Producto desconocido'} (x${p['cantidad'] ?? 0})')
-                        .join(', ')
-                    : 'No hay productos';
-                return Card(
-                  elevation: 4,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: statusColors[orderStatus] ?? Colors.grey,
-                      child:
-                          const Icon(Icons.shopping_cart, color: Colors.white),
-                    ),
-                    title: Text('Cliente: $clientId'),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Productos: $products'),
-                        Text('Estado: $orderStatus'),
-                        Text('IdOrder: $orderId'),
-                      ],
-                    ),
-                    trailing: orderStatuses.containsKey(orderStatus)
-                        ? ElevatedButton(
-                            onPressed: () =>
-                                _updateOrderStatus(orderId, orderStatus),
-                            child: Text(orderStatus == 'pendiente'
-                                ? 'Entregar'
-                                : 'Completado'),
-                          )
-                        : null,
-                  ),
-                );
+                            final products = productsList.isNotEmpty
+                                ? productsList
+                                    .map((p) =>
+                                        '${p['id_producto'] ?? 'Producto desconocido'} (x${p['cantidad'] ?? 0})')
+                                    .join(', ')
+                                : 'No hay productos';
+
+                            return Card(
+                              elevation: 4,
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              child: ListTile(
+                                leading: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                        '${(currentPage - 1) * itemsPerPage + index + 1}.',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold)),
+                                    const SizedBox(width: 8),
+                                    CircleAvatar(
+                                      backgroundColor:
+                                          statusColors[orderStatus] ??
+                                              Colors.grey,
+                                      child: const Icon(Icons.shopping_cart,
+                                          color: Colors.white),
+                                    ),
+                                  ],
+                                ),
+                                title: Text('Cliente: $clientId'),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Productos: $products'),
+                                    Text('Estado: $orderStatus'),
+                                    /* Text('IdOrder: $orderId'), */
+                                  ],
+                                ),
+                                trailing: orderStatuses.containsKey(orderStatus)
+                                    ? ElevatedButton(
+                                        onPressed: () => _updateOrderStatus(
+                                            orderId, orderStatus),
+                                        child: Text(orderStatus == 'pendiente'
+                                            ? 'Entregar'
+                                            : 'Completado'),
+                                      )
+                                    : null,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      _buildPaginationControls(totalPages),
+                    ],
+                  );
+                }
               },
-            );
-          }
-        },
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildFilters() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14.0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButton<String>(
+                  value: selectedStatus,
+                  onChanged: (value) {
+                    setState(() {
+                      selectedStatus = value!;
+                    });
+                  },
+                  items: const [
+                    DropdownMenuItem(value: 'todos', child: Text('Todos')),
+                    DropdownMenuItem(
+                        value: 'pendiente', child: Text('Pendiente')),
+                    DropdownMenuItem(
+                        value: 'en progreso', child: Text('En progreso')),
+                    DropdownMenuItem(
+                        value: 'cancelado', child: Text('Cancelado')),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (pickedDate != null) {
+                      setState(() {
+                        selectedDate = pickedDate;
+                      });
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Fecha',
+                      border: OutlineInputBorder(),
+                    ),
+                    child: Text(
+                      selectedDate != null
+                          ? DateFormat('yyyy-MM-dd').format(selectedDate!)
+                          : 'Selecciona una fecha',
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FutureBuilder<List<dynamic>>(
+                  future: _products,
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final products = snapshot.data!;
+                    return DropdownButton<String>(
+                      value: selectedProduct,
+                      onChanged: (value) {
+                        setState(() {
+                          selectedProduct = value;
+                        });
+                      },
+                      hint: const Text('Selecciona un producto'),
+                      items: products
+                          .map<DropdownMenuItem<String>>((product) =>
+                              DropdownMenuItem<String>(
+                                value: product['id_producto'],
+                                child: Text(
+                                    product['nombre_producto'] ?? 'Sin nombre'),
+                              ))
+                          .toList(),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton(
+              onPressed: _clearFilters,
+              child: const Text('Limpiar filtros'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls(int totalPages) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: currentPage > 1
+              ? () {
+                  setState(() {
+                    currentPage--;
+                  });
+                }
+              : null,
+        ),
+        Text('Página $currentPage de $totalPages'),
+        IconButton(
+          icon: const Icon(Icons.arrow_forward),
+          onPressed: currentPage < totalPages
+              ? () {
+                  setState(() {
+                    currentPage++;
+                  });
+                }
+              : null,
+        ),
+      ],
     );
   }
 }

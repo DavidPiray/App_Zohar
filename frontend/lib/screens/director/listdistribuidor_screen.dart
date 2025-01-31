@@ -3,13 +3,19 @@ import '../../services/distributor_service.dart';
 
 class ListdistribuidorScreen extends StatefulWidget {
   @override
-  _ListdistribuidorScreenSate createState() => _ListdistribuidorScreenSate();
+  _ListdistribuidorScreenState createState() => _ListdistribuidorScreenState();
 }
 
-class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
+class _ListdistribuidorScreenState extends State<ListdistribuidorScreen> {
   final DistributorService distributorService = DistributorService();
   List<dynamic> distributors = [];
+  List<dynamic> filteredDistributors = [];
   bool isLoading = true;
+  bool isSidebarVisible = true;
+  String selectedState = 'Todos';
+  String selectedZone = 'Todas';
+  String searchQuery = '';
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -22,6 +28,7 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
       final result = await distributorService.getDistributors();
       setState(() {
         distributors = result;
+        filteredDistributors = result;
         isLoading = false;
       });
     } catch (e) {
@@ -34,12 +41,311 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
     }
   }
 
+  void _filterDistributors() {
+    setState(() {
+      filteredDistributors = distributors.where((d) {
+        final matchesState =
+            (selectedState == 'Todos' || d['estado'] == selectedState);
+        final matchesZone =
+            (selectedZone == 'Todas' || d['zonaAsignada'] == selectedZone);
+        final matchesSearch = d['nombre']
+            .toString()
+            .toLowerCase()
+            .contains(searchQuery.toLowerCase());
+
+        return matchesState && matchesZone && matchesSearch;
+      }).toList();
+    });
+  }
+
+  void _toggleSidebar() {
+    setState(() {
+      isSidebarVisible = !isSidebarVisible;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isWideScreen = MediaQuery.of(context).size.width > 800;
+
+    return Scaffold(
+      key: _scaffoldKey,
+      appBar: AppBar(
+        title: const Text('Lista de Distribuidores'),
+        backgroundColor: const Color(0xFF3B945E),
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            if (!isWideScreen) {
+              _scaffoldKey.currentState?.openDrawer();
+            } else {
+              _toggleSidebar();
+            }
+          },
+        ),
+        
+      ),
+      drawer: !isWideScreen ? _buildDrawer() : null,
+      body: Row(
+        children: [
+          if (isWideScreen && isSidebarVisible) _buildSidebar(),
+          Expanded(
+            child: Stack(
+              children: [
+                _buildBackground(),
+                Column(
+                  children: [
+                    _buildSearchBar(),
+                    Expanded(
+                      child: isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : filteredDistributors.isEmpty
+                              ? const Center(
+                                  child: Text(
+                                    'No hay distribuidores disponibles.',
+                                    style: TextStyle(
+                                        fontSize: 18, color: Colors.black),
+                                  ),
+                                )
+                              : _buildDistributorList(),
+                    ),
+                    _buildAddDistributorButton(),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackground() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFFB8E994),
+            Color(0xFF6ABF69),
+            Color(0xFF3B945E),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebar() {
+    return Container(
+      width: 250,
+      color: const Color(0xFF3B945E),
+      child: _buildSidebarContent(),
+    );
+  }
+
+  Widget _buildSidebarContent() {
+    return Column(
+      children: [
+        /* const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            'Menú',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ), */
+        ListTile(
+          leading: const Icon(Icons.home, color: Colors.white),
+          title: const Text('Inicio', style: TextStyle(color: Colors.white)),
+          onTap: () {
+            Navigator.pushNamed(context, '/director');
+          },
+        ),
+        const ListTile(
+          title: Text('Filtros', style: TextStyle(color: Colors.white)),
+        ),
+        _buildDropdownFilter(
+          label: 'Estado',
+          value: selectedState,
+          items: ['Todos', 'activo', 'inactivo'],
+          onChanged: (value) {
+            setState(() {
+              selectedState = value!;
+              _filterDistributors();
+            });
+          },
+        ),
+        _buildDropdownFilter(
+          label: 'Zona',
+          value: selectedZone,
+          items: [
+            'Todas',
+            ...distributors.map((d) => d['zonaAsignada']).toSet()
+          ],
+          onChanged: (value) {
+            setState(() {
+              selectedZone = value!;
+              _filterDistributors();
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: Container(
+        color: const Color(0xFF3B945E),
+        child: _buildSidebarContent(),
+      ),
+    );
+  }
+
+  Widget _buildDropdownFilter({
+    required String label,
+    required String value,
+    required List<String> items,
+    required void Function(String?) onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        items: items.map((e) {
+          return DropdownMenuItem(value: e, child: Text(e));
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: TextField(
+        decoration: const InputDecoration(
+          labelText: 'Buscar distribuidor',
+          prefixIcon: Icon(Icons.search),
+          border: OutlineInputBorder(),
+        ),
+        onChanged: (value) {
+          setState(() {
+            searchQuery = value;
+            _filterDistributors();
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildDistributorList() {
+    return ListView.builder(
+      itemCount: filteredDistributors.length,
+      itemBuilder: (context, index) {
+        final distributor = filteredDistributors[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor:
+                  distributor['estado'] == 'activo' ? Colors.green : Colors.red,
+              radius: 10,
+            ),
+            title: Text(
+              distributor['nombre'] ?? 'Sin nombre',
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.black87),
+            ),
+            subtitle:
+                Text(distributor['zonaAsignada'] ?? 'Zona no especificada'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () => _showDistributorDetails(distributor),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showEditDistributorModal(dynamic distributor) async {
+    String name = distributor['nombre'];
+    String zone = distributor['zonaAsignada'];
+    String state = distributor['estado'];
+
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Modificar Distribuidor'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                onChanged: (value) => name = value,
+                controller: TextEditingController(text: name),
+                decoration: const InputDecoration(labelText: 'Nombre'),
+              ),
+              TextField(
+                onChanged: (value) => zone = value,
+                controller: TextEditingController(text: zone),
+                decoration: const InputDecoration(labelText: 'Zona'),
+              ),
+              DropdownButtonFormField<String>(
+                value: state,
+                onChanged: (value) {
+                  state = value!;
+                },
+                items: ['activo', 'inactivo']
+                    .map((status) => DropdownMenuItem(
+                          value: status,
+                          child: Text(status),
+                        ))
+                    .toList(),
+                decoration: const InputDecoration(labelText: 'Estado'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await distributorService.updateDistributor(
+                  idDistribuidor: distributor['id'],
+                  name: name,
+                  phone: distributor['celular'], // Mantenemos el celular
+                );
+                Navigator.of(context).pop();
+                _fetchDistributors();
+              },
+              child: const Text('Actualizar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Mostrar detalles de un distribuidor
   void _showDistributorDetails(dynamic distributor) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Detalles del Distribuidor'),
+          title: const Text('Detalles del Distribuidor'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,20 +364,21 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
                 await distributorService.deleteDistributor(distributor['id']);
                 _fetchDistributors();
               },
-              child: Text('Eliminar', style: TextStyle(color: Colors.red)),
+              child:
+                  const Text('Eliminar', style: TextStyle(color: Colors.red)),
             ),
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop();
                 await _showEditDistributorModal(distributor);
               },
-              child: Text('Modificar'),
+              child: const Text('Modificar'),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('Cerrar'),
+              child: const Text('Cerrar'),
             ),
           ],
         );
@@ -79,74 +386,11 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
     );
   }
 
-  Future<void> _showEditDistributorModal(dynamic distributor) async {
-    String name = distributor['nombre'];
-    String zone = distributor['zonaAsignada'];
-    String state = distributor['estado'];
-
-    return showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Modificar Distribuidor'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                onChanged: (value) => name = value,
-                controller: TextEditingController(text: name),
-                decoration: InputDecoration(labelText: 'Nombre'),
-              ),
-              TextField(
-                onChanged: (value) => zone = value,
-                controller: TextEditingController(text: zone),
-                decoration: InputDecoration(labelText: 'Zona'),
-              ),
-              DropdownButtonFormField<String>(
-                value: state,
-                onChanged: (value) {
-                  state = value!;
-                },
-                items: ['activo', 'inactivo']
-                    .map((status) => DropdownMenuItem(
-                          value: status,
-                          child: Text(status),
-                        ))
-                    .toList(),
-                decoration: InputDecoration(labelText: 'Estado'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                await distributor.updateDistributor(distributor['id'], {
-                  'nombre': name,
-                  'zonaAsignada': zone,
-                  'estado': state,
-                });
-                Navigator.of(context).pop();
-                _fetchDistributors();
-              },
-              child: Text('Actualizar'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancelar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
+// Mostrar modal para agregar un distribuidor
   void _showAddDistributorModal() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        String id = '';
         String name = '';
         String celular = '';
         String email = '';
@@ -154,29 +398,25 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
         String state = 'activo';
 
         return AlertDialog(
-          title: Text('Agregar Distribuidor'),
+          title: const Text('Agregar Distribuidor'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                onChanged: (value) => id = value,
-                decoration: InputDecoration(labelText: 'ID Distribuidor'),
-              ),
-              TextField(
                 onChanged: (value) => name = value,
-                decoration: InputDecoration(labelText: 'Nombre'),
+                decoration: const InputDecoration(labelText: 'Nombre'),
               ),
               TextField(
                 onChanged: (value) => celular = value,
-                decoration: InputDecoration(labelText: 'Celular'),
+                decoration: const InputDecoration(labelText: 'Celular'),
               ),
               TextField(
                 onChanged: (value) => email = value,
-                decoration: InputDecoration(labelText: 'Email'),
+                decoration: const InputDecoration(labelText: 'Email'),
               ),
               TextField(
                 onChanged: (value) => zone = value,
-                decoration: InputDecoration(labelText: 'Zona'),
+                decoration: const InputDecoration(labelText: 'Zona'),
               ),
               DropdownButtonFormField<String>(
                 value: state,
@@ -189,7 +429,7 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
                           child: Text(status),
                         ))
                     .toList(),
-                decoration: InputDecoration(labelText: 'Estado'),
+                decoration: const InputDecoration(labelText: 'Estado'),
               ),
             ],
           ),
@@ -197,23 +437,22 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
             TextButton(
               onPressed: () async {
                 await distributorService.addDistributor({
-                  'id_distribuidor': id,
                   'nombre': name,
-                  'celular': celular,
                   'email': email,
-                  'zonaAsignada': zone,
+                  'celular': celular,
                   'estado': state,
+                  'zonaAsignada': zone,
                 });
                 Navigator.of(context).pop();
                 _fetchDistributors();
               },
-              child: Text('Agregar'),
+              child: const Text('Agregar'),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('Cancelar'),
+              child: const Text('Cancelar'),
             ),
           ],
         );
@@ -221,93 +460,15 @@ class _ListdistribuidorScreenSate extends State<ListdistribuidorScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Lista de Distribuidores'),
-        backgroundColor: Color(0xFF3B945E),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          color: Colors.white,
-          onPressed: () {
-            Navigator.pop(context); // Regresa a la pantalla anterior
-          },
+  Widget _buildAddDistributorButton() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: ElevatedButton(
+        onPressed: _showAddDistributorModal,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
         ),
-      ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFFB8E994),
-                  Color(0xFF6ABF69),
-                  Color(0xFF3B945E),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-          Column(
-            children: [
-              Expanded(
-                child: isLoading
-                    ? Center(child: CircularProgressIndicator())
-                    : distributors.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No hay distribuidores disponibles.',
-                              style: TextStyle(fontSize: 18, color: Colors.black),
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: distributors.length,
-                            itemBuilder: (context, index) {
-                              final distributor = distributors[index];
-                              return Card(
-                                margin: EdgeInsets.symmetric(
-                                    vertical: 8.0, horizontal: 16.0),
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: distributor['estado'] ==
-                                            'activo'
-                                        ? Colors.green
-                                        : Colors.red,
-                                    radius: 10,
-                                  ),
-                                  title: Text(
-                                    distributor['nombre'] ?? 'Sin nombre',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87),
-                                  ),
-                                  subtitle: Text(
-                                    distributor['zonaAsignada'] ??
-                                        'Zona no especificada',
-                                  ),
-                                  trailing: Icon(Icons.arrow_forward_ios),
-                                  onTap: () =>
-                                      _showDistributorDetails(distributor),
-                                ),
-                              );
-                            },
-                          ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: ElevatedButton(
-                  onPressed: _showAddDistributorModal,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color.fromARGB(255, 255, 255, 255),
-                  ),
-                  child: Text('Agregar Distribuidor'),
-                ),
-              ),
-            ],
-          ),
-        ],
+        child: const Text('Agregar Distribuidor'),
       ),
     );
   }
