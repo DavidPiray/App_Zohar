@@ -8,6 +8,7 @@ import '../../widgets/global_button.dart';
 import '../../widgets/animated_alert.dart';
 import '../../core/utils/validators.dart';
 import '../../services/client_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,6 +21,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final ClientService clientService = ClientService();
   final ImagePicker _picker = ImagePicker();
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Future<void> registerUser(String email, String password) async {
+    try {
+      UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      print("Usuario registrado exitosamente: ${userCredential.user?.email}");
+    } on FirebaseAuthException catch (e) {
+      print("Error al registrar el usuario: ${e.message}");
+    }
+  }
 
   String? _name, _email, _password, _confirmPassword, _phone;
   LatLng? _selectedLocation;
@@ -84,6 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
 
         if (result) {
+          await registerUser(_email!,_password!);
           AnimatedAlert.show(
             context,
             'Registro Exitoso',
@@ -296,12 +313,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               flex: isWideScreen ? 0 : 1, // Para pantallas pequeñas expandir
               child: GlobalButton(
                 label: 'Seleccionar Ubicación',
-                backgroundColor:const Color.fromARGB(255, 86, 168, 84),
+                backgroundColor: const Color.fromARGB(255, 86, 168, 84),
                 onPressed: _handleLocationSelection,
                 textStyle: TextStyle(
-                  fontSize: isWideScreen ? 18 : 16, // Tamaño de fuente dinámico
-                  color: Colors.white
-                ),
+                    fontSize:
+                        isWideScreen ? 18 : 16, // Tamaño de fuente dinámico
+                    color: Colors.white),
               ),
             ),
             const SizedBox(width: 16),
@@ -324,12 +341,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               flex: isWideScreen ? 0 : 1, // Para pantallas pequeñas expandir
               child: GlobalButton(
                 label: 'Seleccionar Foto (Opcional)',
-                backgroundColor:const Color.fromARGB(255, 86, 168, 84),
+                backgroundColor: const Color.fromARGB(255, 86, 168, 84),
                 onPressed: _handleImageSelection,
                 textStyle: TextStyle(
-                  fontSize: isWideScreen ? 18 : 16, // Tamaño de fuente dinámico
-                  color: Colors.white
-                ),
+                    fontSize:
+                        isWideScreen ? 18 : 16, // Tamaño de fuente dinámico
+                    color: Colors.white),
               ),
             ),
             const SizedBox(width: 16),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:frontend/services/realtime_service.dart';
 import '../../widgets/box.dart';
 import '../../widgets/animated_alert.dart';
 import '../../services/auth_service.dart';
@@ -17,43 +18,60 @@ class _ClientScreenState extends State<ClientScreen> {
   final AuthService authService = AuthService();
   final ProductService productService = ProductService();
   final OrdersService ordersService = OrdersService();
-  final DatabaseReference _database = FirebaseDatabase.instance.ref();
+  final RealtimeService realtimeService = RealtimeService();
 
   late Future<List<dynamic>> _products;
   late Stream<DatabaseEvent> _orderStatusStream;
+  late Stream<DatabaseEvent> _realtimeStream;
 
   Map<String, int> selectedQuantities = {};
+  List<dynamic> inProgressOrders = [];
   String currentOrderStatus = "pendiente"; // Estado inicial
   String orderId = "o1234567890"; // Reemplaza con el ID del pedido actual
   bool isSidebarVisible = true;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  String clientId = 'client1';
 
   @override
   void initState() {
     super.initState();
-    _setupOrderListener();
     _products = productService.getProducts();
+    _listenToRealtimeUpdates();
   }
 
-  // Configurar el listener para escuchar cambios en el estado del pedido
-  void _setupOrderListener() {
-    _orderStatusStream = _database.child("pedido/$orderId/estado").onValue;
-
-    _orderStatusStream.listen((DatabaseEvent event) {
-      if (event.snapshot.value != null) {
-        final newStatus = event.snapshot.value as String;
-        if (newStatus != currentOrderStatus) {
-          setState(() {
-            currentOrderStatus = newStatus;
-          });
-
-          // Mostrar alerta al cliente sobre el cambio de estado
-          AnimatedAlert.show(
-            context,
-            "Actualización de pedido",
-            "El estado de tu pedido ha cambiado a: $newStatus",
-            type: AnimatedAlertType.info,
-          );
-        }
+  void _listenToRealtimeUpdates() {
+    _realtimeStream = realtimeService
+        .listenToOrders(); // Escucha los cambios en todos los pedidos
+    _realtimeStream.listen((event) {
+      final data = event.snapshot.value;
+      // Si hay cambios en Firebase, vuelve a cargar los pedidos
+      if (data != null) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text("Actualización de pedido"),
+              content: const Text("¿Deseas ver el historial de pedidos?"),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context)
+                        .pop(); // Cierra el diálogo sin hacer nada
+                  },
+                  child: const Text("Cancelar"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Cierra el diálogo actual
+                    Navigator.pushNamed(
+                        context, "/historyClient"); // Navegar a pedidos
+                  },
+                  child: const Text("Ver Pedidos"),
+                ),
+              ],
+            );
+          },
+        );
       }
     });
   }
@@ -75,6 +93,10 @@ class _ClientScreenState extends State<ClientScreen> {
     setState(() {
       isSidebarVisible = !isSidebarVisible;
     });
+  }
+
+  void _viewMoreOrders() {
+    Navigator.pushNamed(context, '/historyClient');
   }
 
   void _buyProducts() {
@@ -220,40 +242,79 @@ class _ClientScreenState extends State<ClientScreen> {
     final bool isWideScreen = MediaQuery.of(context).size.width > 600;
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         title: const Text('Cliente'),
-        leading: Builder(
-          builder: (BuildContext context) {
-            return IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                if (!isWideScreen) {
-                  Scaffold.of(context).openDrawer();
-                } else {
-                  _toggleSidebar();
-                }
-              },
-            );
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            if (!isWideScreen) {
+              _scaffoldKey.currentState?.openDrawer();
+            } else {
+              _toggleSidebar();
+            }
           },
         ),
       ),
-      drawer: !isWideScreen
-          ? Drawer(
-              child: Container(
-                color: const Color(0xFF3B945E),
-                child: _buildSidebarContent(),
-              ),
-            )
-          : null,
-      body: Column(
+      drawer: !isWideScreen ? _buildDrawer() : null,
+      body: Row(
         children: [
-          _buildOrderStatus(),
-          Expanded(child: _buildProductList(isWideScreen)),
+          if (isWideScreen && isSidebarVisible) _buildSidebar(),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(child: _buildProductList(isWideScreen)),
+              ],
+            ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _buyProducts,
         child: const Icon(Icons.shopping_cart),
+      ),
+    );
+  }
+
+  Widget _buildInProgressOrders() {
+    if (inProgressOrders.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Text('No tienes pedidos en progreso.',
+            style: TextStyle(fontSize: 16)),
+      );
+    }
+
+    final displayedOrders = inProgressOrders.take(2).toList();
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Pedidos en progreso:',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ...displayedOrders.map((order) {
+            final orderId = order['id_pedido'];
+            final products = (order['productos'] as List<dynamic>?)
+                    ?.map((p) => p['nombre'] ?? '')
+                    .join(', ') ??
+                'Sin productos';
+
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              child: ListTile(
+                title: Text('Pedido ID: $orderId'),
+                subtitle: Text('Productos: $products'),
+              ),
+            );
+          }).toList(),
+          TextButton(
+            onPressed: _viewMoreOrders,
+            child: const Text('Ver más'),
+          ),
+        ],
       ),
     );
   }
@@ -302,6 +363,15 @@ class _ClientScreenState extends State<ClientScreen> {
           onTap: () => _logout(context),
         ),
       ],
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: Container(
+        color: const Color(0xFF3B945E),
+        child: _buildSidebarContent(),
+      ),
     );
   }
 

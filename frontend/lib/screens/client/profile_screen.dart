@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../widgets/animated_alert.dart';
 import '../../services/client_service.dart';
+import '../../services/auth_service.dart';
 
 class ProfileClientScreen extends StatefulWidget {
   const ProfileClientScreen({super.key});
@@ -13,17 +14,20 @@ class ProfileClientScreen extends StatefulWidget {
 
 class _ProfileClientScreenState extends State<ProfileClientScreen> {
   final ClientService clientService = ClientService();
+  final AuthService securityService = AuthService();
   final _formKey = GlobalKey<FormState>();
   bool _isEditing = false;
+  bool _isChangingPassword = false;
+
   late Future<Map<String, dynamic>> _clientData;
-
-  String? _name;
-  String? _id;
-  String? _email;
-  String? _phone;
+  String? _name, _id, _email, _phone;
   File? _selectedImage;
-
   final ImagePicker _picker = ImagePicker();
+
+  // Campos para cambiar la contraseña
+  final TextEditingController _oldPasswordController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   @override
   void initState() {
@@ -38,7 +42,6 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
         _selectedImage = File(pickedFile.path);
       });
       AnimatedAlert.show(
-        // ignore: use_build_context_synchronously
         context,
         'Foto seleccionada',
         'Se ha seleccionado una nueva foto de perfil.',
@@ -50,14 +53,12 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
   void _saveChanges() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-
       try {
-        // Llama al servicio para actualizar los datos
         final success = await clientService.updateClientData(
-          clientId: _id!, // Reemplaza con el ID real del cliente
+          clientId: _id!,
           name: _name!,
           phone: _phone!,
-          photo: _selectedImage, // Si la foto fue actualizada
+          photo: _selectedImage,
         );
 
         if (success) {
@@ -72,29 +73,61 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
             type: AnimatedAlertType.success,
           );
         }
-        // Simula un retraso para la operación de red
-        await Future.delayed(const Duration(seconds: 2));
-
-        setState(() {
-          _isEditing = false;
-        });
-
-        AnimatedAlert.show(
-          // ignore: use_build_context_synchronously
-          context,
-          'Éxito',
-          'Los cambios han sido guardados con éxito.',
-          type: AnimatedAlertType.success,
-        );
       } catch (e) {
         AnimatedAlert.show(
-          // ignore: use_build_context_synchronously
           context,
           'Error',
           'Hubo un error al guardar los cambios: $e',
           type: AnimatedAlertType.error,
         );
       }
+    }
+  }
+
+  void _changePassword() async {
+    if (_newPasswordController.text != _confirmPasswordController.text) {
+      AnimatedAlert.show(
+        context,
+        'Error',
+        'Las contraseñas no coinciden.',
+        type: AnimatedAlertType.error,
+      );
+      return;
+    }
+
+    try {
+      print('------------');
+      print(_id);
+      final success = await securityService.updatePassword(
+        clientId: _id!,
+        oldPassword: _oldPasswordController.text,
+        newPassword: _newPasswordController.text,
+        email: _email!,
+      );
+      print(_id);
+
+      if (success) {
+        setState(() {
+          _isChangingPassword = false;
+          _oldPasswordController.clear();
+          _newPasswordController.clear();
+          _confirmPasswordController.clear();
+        });
+
+        AnimatedAlert.show(
+          context,
+          'Éxito',
+          'Tu contraseña ha sido actualizada.',
+          type: AnimatedAlertType.success,
+        );
+      }
+    } catch (e) {
+      AnimatedAlert.show(
+        context,
+        'Error',
+        'No se pudo cambiar la contraseña: $e',
+        type: AnimatedAlertType.error,
+      );
     }
   }
 
@@ -134,7 +167,6 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
                         style: TextStyle(color: Colors.white)),
                     onTap: () {},
                   ),
-                  // Agrega más opciones según sea necesario
                 ],
               ),
             ),
@@ -163,7 +195,6 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Foto de perfil
                           GestureDetector(
                             onTap: _isEditing ? _pickImage : null,
                             child: CircleAvatar(
@@ -176,7 +207,6 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
                           ),
                           const SizedBox(height: 20),
 
-                          // Nombre
                           TextFormField(
                             initialValue: _name,
                             enabled: _isEditing,
@@ -194,7 +224,6 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Email
                           TextFormField(
                             initialValue: _email,
                             enabled: false,
@@ -205,7 +234,6 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Teléfono
                           TextFormField(
                             initialValue: _phone,
                             enabled: _isEditing,
@@ -223,34 +251,48 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Botones de acción
-                          if (_isEditing)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _isEditing = false;
-                                    });
-                                  },
-                                  child: const Text('Cancelar'),
-                                ),
-                                ElevatedButton(
-                                  onPressed: _saveChanges,
-                                  child: const Text('Guardar Cambios'),
-                                ),
-                              ],
-                            )
-                          else
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _isEditing = true;
-                                });
-                              },
-                              child: const Text('Editar Perfil'),
+                          if (_isChangingPassword) ...[
+                            TextFormField(
+                              controller: _oldPasswordController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Contraseña Actual',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _newPasswordController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Nueva Contraseña',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _confirmPasswordController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Confirmar Nueva Contraseña',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _changePassword,
+                              child: const Text('Actualizar Contraseña'),
+                            ),
+                          ],
+
+                          ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _isChangingPassword = !_isChangingPassword;
+                              });
+                            },
+                            child: const Text('Cambiar Contraseña'),
+                          ),
                         ],
                       ),
                     ),
