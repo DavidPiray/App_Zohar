@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:frontend/screens/distributor/map_screen.dart';
+import 'package:frontend/services/client_service.dart';
 import 'package:frontend/services/product_service.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../services/distributor_service.dart';
 import '../../services/orders_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/realtime_service.dart';
+import '../../services/google_maps_service.dart';
+import '../../services/location_service.dart';
 import '../../widgets/animated_alert.dart';
 
 class DistributorScreen extends StatefulWidget {
@@ -17,10 +24,19 @@ class DistributorScreen extends StatefulWidget {
 
 class _DistributorScreenState extends State<DistributorScreen> {
   final DistributorService distributorService = DistributorService();
+  final ClientService clientService = ClientService();
   final OrdersService ordersService = OrdersService();
   final ProductService productService = ProductService();
   final AuthService authService = AuthService();
   final RealtimeService realtimeService = RealtimeService();
+
+  final GoogleMapsService googleMapsService = GoogleMapsService(
+      apiKey: dotenv.env['API_GOOGLE_KEY'] ??
+          'AIzaSyBjakA0iK9uAJPF5kqBOkeF2f5iZZr5MwU');
+  final LocationService locationService = LocationService();
+
+  List<LatLng> _polylineCoordinates = [];
+  LatLng? _distributorPosition;
 
   late Future<List<dynamic>> _orders;
   late Future<List<dynamic>> _products;
@@ -131,13 +147,36 @@ class _DistributorScreenState extends State<DistributorScreen> {
     });
   }
 
-  void _updateOrderStatus(String orderId, String currentStatus) async {
+  void _updateOrderStatus(String orderId, String currentStatus,
+      Map<String, dynamic> clientLocation) async {
     try {
       String? nextStatus = orderStatuses[currentStatus];
       if (nextStatus == null) return;
       await ordersService.updateOrderStatus(orderId, nextStatus);
-
+      //
+      if (nextStatus == "en progreso") {
+        // Obtener la ubicación del distribuidor
+        Position distributorLocation =
+            await locationService.getCurrentLocation();
+        _distributorPosition =
+            LatLng(distributorLocation.latitude, distributorLocation.longitude);
+        print('Primero $distributorLocation');
+        print('Segundo $_distributorPosition');
+        // Obtener la ruta entre el distribuidor y el cliente
+        List<LatLng> route = await googleMapsService.getRoute(
+          origin: _distributorPosition!,
+          destination:
+              LatLng(clientLocation['latitude'], clientLocation['longitude']),
+        );
+        print('Cliente $clientLocation');
+//
+        setState(() {
+          _polylineCoordinates = route;
+          print('poli: $_polylineCoordinates');
+        });
+      }
       AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
         context,
         'Éxito',
         'El pedido se ha actualizado a "$nextStatus".',
@@ -146,6 +185,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
       _fetchOrders();
     } catch (error) {
       AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
         context,
         'Error',
         'No se pudo actualizar el pedido: $error',
@@ -168,6 +208,70 @@ class _DistributorScreenState extends State<DistributorScreen> {
       '/reporte-distribuidor',
       arguments: 'dist1',
     );
+  }
+
+  void _updateOrderStatusAndFetchRoute(
+      String orderId, String currentStatus, String customerId) async {
+    try {
+      String? nextStatus = orderStatuses[currentStatus];
+      if (nextStatus == null) return;
+
+      await ordersService.updateOrderStatus(orderId, nextStatus);
+
+      if (nextStatus == "en progreso") {
+        // 🔹 Obtener la ubicación del cliente desde Firestore
+        Map<String, dynamic>? clientLocation =
+            await clientService.getCustomerLocation(customerId);
+
+        if (clientLocation == null) {
+          AnimatedAlert.show(
+            // ignore: use_build_context_synchronously
+            context,
+            'Error',
+            'No se encontró la ubicación del cliente.',
+            type: AnimatedAlertType.error,
+          );
+          return;
+        }
+        print('Cliente $clientLocation');
+        // Obtener la ubicación del distribuidor
+        Position distributorLocation =
+            await locationService.getCurrentLocation(); 
+        _distributorPosition =
+            LatLng(distributorLocation.latitude, distributorLocation.longitude);
+
+        print('Segundo $_distributorPosition');
+        print('Distribuidor: $distributorLocation');
+        // Obtener la ruta entre el distribuidor y el cliente
+        List<LatLng> route = await googleMapsService.getRoute(
+          origin: _distributorPosition!,
+          destination:
+              LatLng(clientLocation['latitude'], clientLocation['longitude']),
+        );
+
+        setState(() {
+          _polylineCoordinates = route;
+        });
+      }
+
+      AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
+        context,
+        'Éxito',
+        'El pedido se ha actualizado a "$nextStatus".',
+        type: AnimatedAlertType.success,
+      );
+
+      _fetchOrders();
+    } catch (error) {
+      AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
+        context,
+        'Error',
+        'No se pudo actualizar el pedido: $error',
+        type: AnimatedAlertType.error,
+      );
+    }
   }
 
   @override
@@ -340,15 +444,38 @@ class _DistributorScreenState extends State<DistributorScreen> {
                                     /* Text('IdOrder: $orderId'), */
                                   ],
                                 ),
-                                trailing: orderStatuses.containsKey(orderStatus)
-                                    ? ElevatedButton(
-                                        onPressed: () => _updateOrderStatus(
-                                            orderId, orderStatus),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (orderStatuses.containsKey(orderStatus))
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            _updateOrderStatusAndFetchRoute(
+                                          orderId,
+                                          orderStatus,
+                                          order[
+                                              'clienteID'], // 🔹 Ahora se usa el ID para obtener ubicación
+                                        ),
                                         child: Text(orderStatus == 'pendiente'
                                             ? 'Entregar'
                                             : 'Completado'),
-                                      )
-                                    : null,
+                                      ),
+                                    if (orderStatus == "en progreso")
+                                      IconButton(
+                                        icon: const Icon(Icons.map,
+                                            color: Colors.blue),
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => MapScreen(
+                                                  route: _polylineCoordinates),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                  ],
+                                ),
                               ),
                             );
                           },

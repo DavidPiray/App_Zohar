@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../services/auth_service.dart';
 import '../../services/distributor_service.dart';
 
@@ -14,17 +17,34 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final AuthService authService = AuthService();
   final DistributorService distributorService = DistributorService();
 
-  late Future<List<dynamic>> _inventory; // Inventario del distribuidor
+  late Future<List<dynamic>> _inventory;
   bool isSidebarVisible = true;
+  bool isAscending = true;
+  late Timer _timer;
+  DateTime _currentTime = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     _inventory = distributorService.getDistributorInventory("dist1");
+
+    // 🔹 Actualiza la hora en tiempo real cada segundo
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
+      setState(() {
+        _currentTime = DateTime.now();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
   }
 
   void _logout(BuildContext context) async {
     await authService.logout();
+    // ignore: use_build_context_synchronously
     Navigator.pushReplacementNamed(context, '/login');
   }
 
@@ -34,17 +54,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
-  void _showRestockForm(BuildContext context) async {
-    final inventory = await _inventory;
+  void _toggleSortOrder() {
+    setState(() {
+      isAscending = !isAscending;
+      _inventory = distributorService
+          .getDistributorInventory("dist1")
+          .then((list) => list
+            ..sort((a, b) {
+              return isAscending
+                  ? a['stock'].compareTo(b['stock'])
+                  : b['stock'].compareTo(a['stock']);
+            }));
+    });
+  }
+
+  void _showRestockForm(BuildContext context, Map<String, dynamic> product) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Recargar Botellones'),
           content: RestockForm(
-            inventory: inventory,
-            onSubmit: (productId, quantity) {
-              _restockProduct("dist1", productId, quantity);
+            product: product,
+            onSubmit: (quantity) {
+              _restockProduct("dist1", product['id_producto'], quantity);
             },
           ),
         );
@@ -55,6 +88,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Future<void> _restockProduct(
       String distributorId, String productId, int quantity) async {
     try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('Error: Usuario no autenticado');
+        return;
+      }
       final ref = FirebaseFirestore.instance.collection('recargas');
       await ref.add({
         'distribuidorId': distributorId,
@@ -83,40 +121,58 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Inventario'),
-        leading: Builder(
-          builder: (BuildContext context) {
-            return IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                if (!isWideScreen) {
-                  Scaffold.of(context).openDrawer();
-                } else {
-                  _toggleSidebar();
-                }
-              },
-            );
-          },
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: _toggleSidebar,
         ),
         actions: [
-          TextButton(
-            onPressed: () => _showRestockForm(context),
-            child: const Text('Recargar Botellones',
-                style: TextStyle(color: Colors.white)),
+          IconButton(
+            icon: Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward),
+            onPressed: _toggleSortOrder,
           ),
         ],
       ),
-      drawer: !isWideScreen
-          ? Drawer(
-              child: Container(
-                color: const Color(0xFF3B945E),
-                child: _buildSidebarContent(),
-              ),
-            )
-          : null,
       body: Row(
         children: [
           if (isWideScreen && isSidebarVisible) _buildSidebar(),
-          Expanded(child: _buildInventoryList()),
+          Expanded(
+            child: Column(
+              children: [
+                _buildTimeline(),
+                Expanded(child: _buildInventoryList()),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeline() {
+    final openTime =
+        DateTime(_currentTime.year, _currentTime.month, _currentTime.day, 8);
+    final closeTime =
+        DateTime(_currentTime.year, _currentTime.month, _currentTime.day, 18);
+    final progress = (_currentTime.difference(openTime).inMinutes /
+            closeTime.difference(openTime).inMinutes)
+        .clamp(0.0, 1.0);
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Horario: ${DateFormat.Hm().format(openTime)} - ${DateFormat.Hm().format(closeTime)}",
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 5),
+          LinearProgressIndicator(value: progress),
+          const SizedBox(height: 5),
+          Text(
+            "Hora actual: ${DateFormat.Hms().format(_currentTime)}",
+            style: const TextStyle(fontSize: 14),
+          ),
         ],
       ),
     );
@@ -134,17 +190,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'Opciones',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
         ListTile(
           leading: const Icon(Icons.home, color: Colors.white),
           title: const Text('Inicio', style: TextStyle(color: Colors.white)),
@@ -181,12 +226,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: ListTile(
-                  leading: CircleAvatar(
+                  leading: const CircleAvatar(
                     backgroundColor: Colors.blueAccent,
-                    child: const Icon(Icons.inventory, color: Colors.white),
+                    child: Icon(Icons.inventory, color: Colors.white),
                   ),
                   title: Text(product['nombre']),
                   subtitle: Text('Cantidad: ${product['stock']}'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.add_circle_outline,
+                        color: Colors.green),
+                    onPressed: () => _showRestockForm(context, product),
+                  ),
                 ),
               );
             },
@@ -197,87 +247,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 }
 
-class RestockForm extends StatefulWidget {
-  final List<dynamic> inventory;
-  final Function(String productId, int quantity) onSubmit;
-
-  const RestockForm({
-    Key? key,
-    required this.inventory,
-    required this.onSubmit,
-  }) : super(key: key);
-
-  @override
-  _RestockFormState createState() => _RestockFormState();
-}
-
-class _RestockFormState extends State<RestockForm> {
-  String? selectedProduct;
+class RestockForm extends StatelessWidget {
+  final Map<String, dynamic> product;
+  final Function(int quantity) onSubmit;
   final TextEditingController quantityController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.inventory.isNotEmpty) {
-      selectedProduct = widget.inventory.first['id']; // Selección por defecto
-    }
-  }
+  RestockForm({Key? key, required this.product, required this.onSubmit})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        DropdownButton<String>(
-          value: selectedProduct,
-          onChanged: (value) {
-            setState(() {
-              selectedProduct = value;
-            });
-          },
-          hint: const Text('Selecciona un producto'),
-          items: widget.inventory.map<DropdownMenuItem<String>>((product) {
-            return DropdownMenuItem<String>(
-              value: product['id'],
-              child: Text(product['nombre']),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: quantityController,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Cantidad',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 16),
+    return AlertDialog(
+      title: Text("Recargar ${product['nombre']}"),
+      content: TextField(
+        controller: quantityController,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(labelText: 'Cantidad'),
+      ),
+      actions: [
         ElevatedButton(
           onPressed: () {
-            if (selectedProduct != null && quantityController.text.isNotEmpty) {
-              try {
-                final quantity = int.parse(quantityController.text);
-                if (quantity > 0) {
-                  widget.onSubmit(selectedProduct!, quantity);
-                  Navigator.of(context).pop();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('La cantidad debe ser mayor a 0')),
-                  );
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Ingresa un número válido')),
-                );
-              }
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content:
-                        Text('Selecciona un producto y una cantidad válida')),
-              );
+            final quantity = int.tryParse(quantityController.text) ?? 0;
+            if (quantity > 0) {
+              onSubmit(quantity);
+              Navigator.of(context).pop();
             }
           },
           child: const Text('Solicitar'),
