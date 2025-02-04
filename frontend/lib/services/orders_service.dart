@@ -49,7 +49,6 @@ class OrdersService {
       if (response.statusCode != 201) {
         throw Exception('Error al crear el pedido: ${response.data}');
       }
-      print('Pedido creado con éxito');
     } catch (error) {
       print('Error al agregar producto: $error');
       throw Exception('Error al agregar producto: $error');

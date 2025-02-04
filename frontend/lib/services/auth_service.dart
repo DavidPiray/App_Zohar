@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:frontend/services/client_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/config/dio_config.dart';
 import '../core/config/token_manager.dart';
@@ -21,9 +22,10 @@ class AuthService {
           throw Exception('El servidor no devolvió un token válido.');
         }
         await TokenManager.saveToken(token);
+        // Para guardar el correo en la sesion actual
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('email', email); // Guarda el correo
-
+        await prefs.setString('email', email);
+        
         return token;
       } else {
         throw Exception('Error del servidor: ${response.statusMessage}');
@@ -62,9 +64,9 @@ class AuthService {
       if (token == null || token.isEmpty) {
         throw Exception('No hay un token válido. Inicia sesión nuevamente.');
       }
-
+      // Crear la solicitud
       final response = await _dio.put(
-        '/users/$clientId/password',
+        '/users/password',
         data: {
           'oldPassword': oldPassword,
           'newPassword': newPassword,
@@ -74,7 +76,6 @@ class AuthService {
           headers: {'Authorization': 'Bearer $token'},
         ),
       );
-
       if (response.statusCode == 200) {
         return true; // Contraseña actualizada con éxito
       } else {
