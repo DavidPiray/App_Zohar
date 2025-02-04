@@ -1,88 +1,112 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../../services/location_service.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MapScreen extends StatefulWidget {
-  final List<LatLng> route;
+  final String orderId;
+  final LatLng clientLocation;
 
-  const MapScreen({Key? key, required this.route}) : super(key: key);
+  const MapScreen(
+      {super.key, required this.orderId, required this.clientLocation});
 
   @override
-  _MapScreenState createState() => _MapScreenState();
+  State<MapScreen> createState() => _MapScreenState();
 }
 
 class _MapScreenState extends State<MapScreen> {
+  StreamSubscription<Position>? positionStream;
   GoogleMapController? _mapController;
-  LatLng? _distributorPosition;
-  final LocationService locationService = LocationService();
+  LatLng? _distributorLocation;
+  final DatabaseReference _database = FirebaseDatabase.instance.ref();
 
   @override
   void initState() {
     super.initState();
-    _getDistributorLocation();
-  }
-
-  Future<void> _getDistributorLocation() async {
-    try {
-      final position = await locationService.getCurrentLocation();
+    _listenToDistributorLocation();
+    // Escuchar la ubicación en tiempo real
+    positionStream = Geolocator.getPositionStream().listen((Position position) {
+      if (!mounted) return; // Evitar llamar setState() después de dispose()
       setState(() {
-        _distributorPosition = LatLng(position.latitude, position.longitude);
+        print(
+            "📌 Actualizando posición: ${position.latitude}, ${position.longitude}");
       });
-      _moveCameraToDistributor();
-    } catch (e) {
-      print("Error al obtener ubicación: $e");
-    }
+    });
   }
 
-  void _moveCameraToDistributor() {
-    if (_mapController != null && _distributorPosition != null) {
-      _mapController!.animateCamera(
-        CameraUpdate.newLatLngZoom(_distributorPosition!, 15.0), // 🔹 Zoom centrado
-      );
-    }
+  @override
+  void dispose() {
+    positionStream?.cancel(); // 🔹 Cancelar la escucha al cerrar la pantalla
+    super.dispose();
+  }
+
+  void _listenToDistributorLocation() {
+    _database.child('ubicaciones/${widget.orderId}').onValue.listen((event) {
+      final data = event.snapshot.value;
+      if (data != null && data is Map) {
+        setState(() {
+          _distributorLocation = LatLng(data['latitude'], data['longitude']);
+        });
+
+        if (_mapController != null) {
+          _mapController!.animateCamera(
+            CameraUpdate.newLatLng(_distributorLocation!),
+          );
+        }
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    Set<Marker> markers = {
+      Marker(
+        markerId: const MarkerId("client"),
+        position: widget.clientLocation,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      ),
+      if (_distributorLocation != null)
+        Marker(
+          markerId: const MarkerId("distributor"),
+          position: _distributorLocation!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+        ),
+    };
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Seguimiento de Pedido")),
-      body: _distributorPosition == null
-          ? const Center(child: CircularProgressIndicator())
-          : GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _distributorPosition!, // 🔹 Centrar en el distribuidor
-                zoom: 15.0,
-              ),
-              onMapCreated: (GoogleMapController controller) {
-                _mapController = controller;
-                _moveCameraToDistributor(); // 🔹 Mover la cámara cuando el mapa esté listo
-              },
-              markers: {
-                Marker(
-                  markerId: const MarkerId('distributor'),
-                  position: _distributorPosition!,
-                  infoWindow: const InfoWindow(title: 'Ubicación Actual'),
-                  icon: BitmapDescriptor.defaultMarkerWithHue(
-                      BitmapDescriptor.hueBlue),
-                ),
-                if (widget.route.isNotEmpty)
-                  Marker(
-                    markerId: const MarkerId('client'),
-                    position: widget.route.last,
-                    infoWindow: const InfoWindow(title: 'Destino'),
-                    icon: BitmapDescriptor.defaultMarkerWithHue(
-                        BitmapDescriptor.hueRed),
-                  ),
-              },
-              polylines: {
-                Polyline(
-                  polylineId: const PolylineId("route"),
-                  points: widget.route,
-                  color: Colors.blue,
-                  width: 5,
-                ),
-              },
-            ),
+      appBar: AppBar(title: const Text("Mapa en Tiempo Real")),
+      body: GoogleMap(
+        initialCameraPosition: CameraPosition(
+          target: widget.clientLocation,
+          zoom: 14,
+        ),
+        markers: markers,
+        onMapCreated: (GoogleMapController controller) {
+          _mapController = controller;
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: const Icon(Icons.navigation),
+        onPressed: _openGoogleMapsNavigation,
+      ),
     );
+  }
+
+  Future<void> _openGoogleMapsNavigation() async {
+    if (_distributorLocation == null) return;
+
+    String googleMapsUrl =
+        "https://www.google.com/maps/dir/?api=1&origin=${_distributorLocation!.latitude},${_distributorLocation!.longitude}&destination=${widget.clientLocation.latitude},${widget.clientLocation.longitude}&travelmode=driving";
+
+    Uri uri = Uri.parse(googleMapsUrl);
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      throw 'No se pudo abrir Google Maps';
+    }
   }
 }

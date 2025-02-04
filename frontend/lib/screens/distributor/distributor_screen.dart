@@ -37,6 +37,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
 
   List<LatLng> _polylineCoordinates = [];
   LatLng? _distributorPosition;
+  LatLng? _ClientPosition;
 
   late Future<List<dynamic>> _orders;
   late Future<List<dynamic>> _products;
@@ -72,18 +73,21 @@ class _DistributorScreenState extends State<DistributorScreen> {
     _listenToRealtimeUpdates();
   }
 
+  // Para obtener los pedidos
   void _fetchOrders() {
     setState(() {
       _orders = distributorService.getOrdersByDistributor(distributorId);
     });
   }
 
+  // Para obtener los productos
   void _fetchProducts() {
     setState(() {
       _products = productService.getProducts();
     });
   }
 
+  // Para escuchar los pedidos nuevos en tiempor real
   void _listenToRealtimeUpdates() {
     _realtimeStream = realtimeService.listenToOrders();
     _realtimeStream.listen((event) {
@@ -94,6 +98,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
     });
   }
 
+  // Para los filtros
   List<dynamic> _filterAndSortOrders(List<dynamic> orders) {
     orders = orders.where((order) => order['estado'] != 'completado').toList();
 
@@ -127,6 +132,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
     return orders;
   }
 
+  // Limpiar los filtros
   void _clearFilters() {
     setState(() {
       selectedStatus = 'todos';
@@ -136,18 +142,14 @@ class _DistributorScreenState extends State<DistributorScreen> {
     });
   }
 
-  void _logout(BuildContext context) async {
-    await authService.logout();
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
+  // Desplazamiento de la barra lateral
   void _toggleSidebar() {
     setState(() {
       isSidebarVisible = !isSidebarVisible;
     });
   }
 
-  void _updateOrderStatus(String orderId, String currentStatus,
+/*   void _updateOrderStatus(String orderId, String currentStatus,
       Map<String, dynamic> clientLocation) async {
     try {
       String? nextStatus = orderStatuses[currentStatus];
@@ -193,6 +195,15 @@ class _DistributorScreenState extends State<DistributorScreen> {
       );
     }
   }
+ */
+
+  // NAVEGADORES
+  // Lógica para cerrar sesión
+  void _logout(BuildContext context) async {
+    await authService.logout();
+    // ignore: use_build_context_synchronously
+    Navigator.pushReplacementNamed(context, '/login');
+  }
 
   void _goToInventory() {
     Navigator.pushNamed(context, '/inventory_screen');
@@ -210,19 +221,67 @@ class _DistributorScreenState extends State<DistributorScreen> {
     );
   }
 
-  void _updateOrderStatusAndFetchRoute(
+  // Actualizar las ubicaciones
+  Future<LatLng?> _updateLocation(String customerId, String orderId) async {
+    print('📌 Buscando ubicación del cliente $customerId...');
+
+    Map<String, dynamic>? clientLocation =
+        await clientService.getCustomerLocation(customerId);
+
+    if (clientLocation == null ||
+        !clientLocation.containsKey('latitude') ||
+        !clientLocation.containsKey('longitude')) {
+      print('❌ No se encontró la ubicación del cliente.');
+      AnimatedAlert.show(
+        context,
+        'Error',
+        'No se encontró la ubicación del cliente.',
+        type: AnimatedAlertType.error,
+      );
+      return null;
+    }
+
+    print('✅ Cliente encontrado: $clientLocation');
+
+    Position distributorLocation = await locationService.getCurrentLocation();
+    LatLng distributorLatLng =
+        LatLng(distributorLocation.latitude, distributorLocation.longitude);
+
+    // Guardar ubicación en Firebase
+    await realtimeService.saveDistributorLocation(
+        orderId, distributorLatLng.latitude, distributorLatLng.longitude);
+
+    // Escuchar cambios en la ubicación del distribuidor
+    Geolocator.getPositionStream().listen((Position newPosition) {
+      if (mounted) {
+        setState(() {
+          _distributorPosition =
+              LatLng(newPosition.latitude, newPosition.longitude);
+        });
+      }
+      realtimeService.updateDistributorLocation(
+          orderId, newPosition.latitude, newPosition.longitude);
+      print('🔄 Actualizando distribuidor en Firebase: $newPosition');
+    });
+
+    return LatLng(
+      clientLocation['latitude'] as double,
+      clientLocation['longitude'] as double,
+    );
+  }
+
+  // Para actualizar el estado y sincronizar ubicaciones
+  void _updateOrderStatusAndTrackLocation(
       String orderId, String currentStatus, String customerId) async {
     try {
       String? nextStatus = orderStatuses[currentStatus];
       if (nextStatus == null) return;
-
-      await ordersService.updateOrderStatus(orderId, nextStatus);
-
+      await ordersService.updateOrderStatus(
+          orderId, nextStatus); // Actualiza el estado en Firestore
       if (nextStatus == "en progreso") {
-        // 🔹 Obtener la ubicación del cliente desde Firestore
+        // Obtener la ubicación del cliente desde Firestore
         Map<String, dynamic>? clientLocation =
             await clientService.getCustomerLocation(customerId);
-
         if (clientLocation == null) {
           AnimatedAlert.show(
             // ignore: use_build_context_synchronously
@@ -233,27 +292,30 @@ class _DistributorScreenState extends State<DistributorScreen> {
           );
           return;
         }
-        print('Cliente $clientLocation');
+        _ClientPosition = LatLng(clientLocation['latitude'] as double,
+            clientLocation['longitude'] as double);
         // Obtener la ubicación del distribuidor
         Position distributorLocation =
-            await locationService.getCurrentLocation(); 
+            await locationService.getCurrentLocation();
         _distributorPosition =
             LatLng(distributorLocation.latitude, distributorLocation.longitude);
+        // Guardar ubicación inicial en Firebase Realtime Database
+        await realtimeService.saveDistributorLocation(orderId,
+            distributorLocation.latitude, distributorLocation.longitude);
 
-        print('Segundo $_distributorPosition');
-        print('Distribuidor: $distributorLocation');
-        // Obtener la ruta entre el distribuidor y el cliente
-        List<LatLng> route = await googleMapsService.getRoute(
-          origin: _distributorPosition!,
-          destination:
-              LatLng(clientLocation['latitude'], clientLocation['longitude']),
-        );
-
-        setState(() {
-          _polylineCoordinates = route;
+        // Escuchar cambios en la ubicación del distribuidor y actualizar Firebase en tiempo real
+        Geolocator.getPositionStream().listen((Position newPosition) {
+          realtimeService.updateDistributorLocation(
+              orderId, newPosition.latitude, newPosition.longitude);
+          setState(() {
+            _distributorPosition =
+                LatLng(newPosition.latitude, newPosition.longitude);
+          });
         });
+      } else if (nextStatus == "completado") {
+        // Eliminar ubicación del distribuidor en Firebase
+        await realtimeService.removeDistributorLocation(orderId);
       }
-
       AnimatedAlert.show(
         // ignore: use_build_context_synchronously
         context,
@@ -261,7 +323,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
         'El pedido se ha actualizado a "$nextStatus".',
         type: AnimatedAlertType.success,
       );
-
       _fetchOrders();
     } catch (error) {
       AnimatedAlert.show(
@@ -274,6 +335,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
     }
   }
 
+  // Página Principal
   @override
   Widget build(BuildContext context) {
     final bool isWideScreen = MediaQuery.of(context).size.width > 600;
@@ -450,11 +512,10 @@ class _DistributorScreenState extends State<DistributorScreen> {
                                     if (orderStatuses.containsKey(orderStatus))
                                       ElevatedButton(
                                         onPressed: () =>
-                                            _updateOrderStatusAndFetchRoute(
+                                            _updateOrderStatusAndTrackLocation(
                                           orderId,
                                           orderStatus,
-                                          order[
-                                              'clienteID'], // 🔹 Ahora se usa el ID para obtener ubicación
+                                          order['clienteID'],
                                         ),
                                         child: Text(orderStatus == 'pendiente'
                                             ? 'Entregar'
@@ -465,12 +526,75 @@ class _DistributorScreenState extends State<DistributorScreen> {
                                         icon: const Icon(Icons.map,
                                             color: Colors.blue),
                                         onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => MapScreen(
-                                                  route: _polylineCoordinates),
-                                            ),
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (context) {
+                                              return FutureBuilder<LatLng?>(
+                                                future: _updateLocation(
+                                                    order['clienteID'],
+                                                    orderId),
+                                                builder: (context, snapshot) {
+                                                  if (snapshot
+                                                          .connectionState ==
+                                                      ConnectionState.waiting) {
+                                                    return const AlertDialog(
+                                                      title: Text(
+                                                          'Cargando ubicación...'),
+                                                      content: Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          CircularProgressIndicator(),
+                                                          SizedBox(height: 10),
+                                                          Text(
+                                                              'Obteniendo datos del mapa...')
+                                                        ],
+                                                      ),
+                                                    );
+                                                  }
+
+                                                  if (snapshot.hasError ||
+                                                      snapshot.data == null) {
+                                                    return AlertDialog(
+                                                      title:
+                                                          const Text('Error'),
+                                                      content: const Text(
+                                                          'No se pudo obtener la ubicación.'),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                  context),
+                                                          child: const Text(
+                                                              'Cerrar'),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  }
+
+                                                  WidgetsBinding.instance
+                                                      .addPostFrameCallback(
+                                                          (_) {
+                                                    Navigator.pop(
+                                                        context); // Cerrar el diálogo de carga
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            MapScreen(
+                                                          orderId: orderId,
+                                                          clientLocation:
+                                                              snapshot.data!,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  });
+
+                                                  return Container(); // Evita mostrar algo innecesario
+                                                },
+                                              );
+                                            },
                                           );
                                         },
                                       ),
