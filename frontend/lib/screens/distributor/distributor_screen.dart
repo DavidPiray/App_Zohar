@@ -11,7 +11,6 @@ import '../../services/distributor_service.dart';
 import '../../services/orders_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/realtime_service.dart';
-import '../../services/google_maps_service.dart';
 import '../../services/location_service.dart';
 import '../../widgets/animated_alert.dart';
 
@@ -30,14 +29,12 @@ class _DistributorScreenState extends State<DistributorScreen> {
   final AuthService authService = AuthService();
   final RealtimeService realtimeService = RealtimeService();
 
-  final GoogleMapsService googleMapsService = GoogleMapsService(
-      apiKey: dotenv.env['API_GOOGLE_KEY'] ??
-          'AIzaSyBjakA0iK9uAJPF5kqBOkeF2f5iZZr5MwU');
   final LocationService locationService = LocationService();
 
-  List<LatLng> _polylineCoordinates = [];
+  // ignore: unused_field
   LatLng? _distributorPosition;
-  LatLng? _ClientPosition;
+  // ignore: unused_field
+  LatLng? _clientPosition;
 
   late Future<List<dynamic>> _orders;
   late Future<List<dynamic>> _products;
@@ -206,11 +203,16 @@ class _DistributorScreenState extends State<DistributorScreen> {
   }
 
   void _goToInventory() {
-    Navigator.pushNamed(context, '/inventory_screen');
+    Navigator.pushNamed(context, '/inventario-distribuidor');
   }
 
+  void _goConfig() {
+    Navigator.pushNamed(context, '/inventario-distribuidor');
+  }
+
+
   void _goToProfile() {
-    Navigator.pushNamed(context, '/profileDistributor');
+    Navigator.pushNamed(context, '/perfil-distribuidor');
   }
 
   void _goToReports() {
@@ -292,7 +294,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
           );
           return;
         }
-        _ClientPosition = LatLng(clientLocation['latitude'] as double,
+        _clientPosition = LatLng(clientLocation['latitude'] as double,
             clientLocation['longitude'] as double);
         // Obtener la ubicación del distribuidor
         Position distributorLocation =
@@ -375,6 +377,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
     );
   }
 
+  // Constructor de la barra lateral
   Widget _buildSidebar() {
     return Container(
       width: 250,
@@ -383,6 +386,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
     );
   }
 
+  // Contenido de la barra lateral
   Widget _buildSidebarContent() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -414,6 +418,11 @@ class _DistributorScreenState extends State<DistributorScreen> {
           leading: const Icon(Icons.report, color: Colors.white),
           title: const Text('Reportes', style: TextStyle(color: Colors.white)),
           onTap: _goToReports,
+        ),
+        ListTile(
+          leading: const Icon(Icons.settings, color: Colors.white),
+          title: const Text('Configuraciones', style: TextStyle(color: Colors.white)),
+          onTap: () => _goConfig,
         ),
         ListTile(
           leading: const Icon(Icons.logout, color: Colors.white),
@@ -617,105 +626,62 @@ class _DistributorScreenState extends State<DistributorScreen> {
     );
   }
 
+  // Constructor de los filtros
   Widget _buildFilters() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14.0),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButton<String>(
-                  value: selectedStatus,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedStatus = value!;
-                    });
-                  },
-                  items: const [
-                    DropdownMenuItem(value: 'todos', child: Text('Todos')),
-                    DropdownMenuItem(
-                        value: 'pendiente', child: Text('Pendiente')),
-                    DropdownMenuItem(
-                        value: 'en progreso', child: Text('En progreso')),
-                    DropdownMenuItem(
-                        value: 'cancelado', child: Text('Cancelado')),
-                  ],
-                ),
+          SizedBox(
+            width: 150, // Ajusta el tamaño según sea necesario
+            child: DropdownButtonFormField<String>(
+              value: selectedStatus,
+              onChanged: (value) {
+                setState(() {
+                  selectedStatus = value!;
+                });
+              },
+              decoration: const InputDecoration(
+                labelText: 'Estado',
+                border: OutlineInputBorder(),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    final pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (pickedDate != null) {
-                      setState(() {
-                        selectedDate = pickedDate;
-                      });
-                    }
-                  },
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Fecha',
-                      border: OutlineInputBorder(),
-                    ),
-                    child: Text(
-                      selectedDate != null
-                          ? DateFormat('yyyy-MM-dd').format(selectedDate!)
-                          : 'Selecciona una fecha',
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FutureBuilder<List<dynamic>>(
-                  future: _products,
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    final products = snapshot.data!;
-                    return DropdownButton<String>(
-                      value: selectedProduct,
-                      onChanged: (value) {
-                        setState(() {
-                          selectedProduct = value;
-                        });
-                      },
-                      hint: const Text('Selecciona un producto'),
-                      items: products
-                          .map<DropdownMenuItem<String>>((product) =>
-                              DropdownMenuItem<String>(
-                                value: product['id_producto'],
-                                child: Text(
-                                    product['nombre_producto'] ?? 'Sin nombre'),
-                              ))
-                          .toList(),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              onPressed: _clearFilters,
-              child: const Text('Limpiar filtros'),
+              items: const [
+                DropdownMenuItem(value: 'todos', child: Text('Todos')),
+                DropdownMenuItem(value: 'pendiente', child: Text('Pendiente')),
+                DropdownMenuItem(
+                    value: 'en progreso', child: Text('En progreso')),
+                DropdownMenuItem(value: 'cancelado', child: Text('Cancelado')),
+              ],
             ),
+          ),
+
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.calendar_today, color: Colors.blue),
+            onPressed: () async {
+              final pickedDate = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (pickedDate != null) {
+                setState(() {
+                  selectedDate = pickedDate;
+                });
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.clear, color: Colors.red),
+            onPressed: _clearFilters,
           ),
         ],
       ),
     );
   }
 
+  // Controlador de Paginación
   Widget _buildPaginationControls(int totalPages) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,

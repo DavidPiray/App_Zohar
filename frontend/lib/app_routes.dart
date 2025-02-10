@@ -12,10 +12,13 @@ import 'screens/distributor/distributor_screen.dart';
 import 'screens/distributor/inventory_screen.dart';
 import 'screens/distributor/profile_screen.dart';
 import 'screens/reports/report_distributor_screen.dart';
-// Para Director
+import 'screens/distributor/settings_distributor_screen.dart';
+// Para Gerente
 import 'screens/director/listdistribuidor_screen.dart';
 import 'screens/director/listproductos_screen.dart';
 import 'screens/director/reports_screen.dart';
+import 'screens/director/map_gerente.dart';
+import 'screens/director/settings_gerente_screen.dart';
 // Extras
 import 'screens/utils/map_screen.dart';
 import 'screens/home/main_screen.dart';
@@ -28,30 +31,29 @@ class AppRoutes {
     '/admin': (context) => AdminScreen(),
     '/recuperar cuenta': (context) => const RecoverPasswordScreen(),
     // Cliente
-    '/register': (context) => const RegisterScreen(),
-    '/client': (context) => const ClientScreen(),
-    '/profileClient': (context) => const ProfileClientScreen(),
-    '/historyClient': (context) => const OrdersClientScreen(),
+    '/registro': (context) => const RegisterScreen(),
+    '/cliente': (context) => const ClientScreen(),
+    '/perfil-cliente': (context) => const ProfileClientScreen(),
+    '/historial-cliente': (context) => const OrdersClientScreen(),
 
     // Distribuidor
-    '/distributor': (context) => const DistributorScreen(),
-    '/inventory_screen': (context) => const InventoryScreen(),
-    '/profileDistributor': (context) => const ProfileDistributorScreen(),
-    '/reporte-distribuidor': (context) {
-      final distributorId =
-          ModalRoute.of(context)?.settings.arguments as String;
-      return ReportDistributorScreen(distributorId: distributorId);
-    },
+    '/distribuidor': (context) => const DistributorScreen(),
+    '/inventario-distribuidor': (context) => const InventoryScreen(),
+    '/perfil-distribuidor': (context) => const ProfileDistributorScreen(),
+    '/reporte-distribuidor': (context) => const DistributorDashboard(),
+    '/configuracion-distribuidores': (context) => const DistributorSettingsScreen(),
 
-    // Director
-    '/director': (context) => DirectorScreen(),
-    '/listDistribuidor': (context) => ListdistribuidorScreen(),
-    '/repote-director': (context) => ReportsScreen(),
+    // Gerente
+    '/gerente': (context) => DirectorScreen(),
+    '/lista-distribuidores': (context) => ListdistribuidorScreen(),
+    '/reporte-gerente': (context) => const ReportsScreen(),
+    '/mapa-gerente': (context) => const ManagerMapScreen(),
+    '/configuracion-gerente': (context) => const ManagerSettingsScreen(),
 
     // Extras
     '/map': (context) => MapScreen(),
     '/main': (context) => const MainScreen(),
-    '/listProductos': (context) => ListProductScreen(),
+    '/lista-productos': (context) => ListProductScreen(),
     '/new': (context) => ResponsiveDashboard(),
   };
 }

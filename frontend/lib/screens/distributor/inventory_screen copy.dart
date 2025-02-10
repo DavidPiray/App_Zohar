@@ -1,3 +1,5 @@
+
+
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -22,16 +24,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
   bool isAscending = true;
   late Timer _timer;
   DateTime _currentTime = DateTime.now();
-  TimeOfDay? _openTime;
-  TimeOfDay? _closeTime;
-  double _progress = 0.0;
 
   @override
   void initState() {
     super.initState();
     _inventory = distributorService.getDistributorInventory("dist1");
-    _startTimer();
-    _listenToConfigChanges(); // 🔹 ESCUCHA CAMBIOS EN TIEMPO REAL
+
     // 🔹 Actualiza la hora en tiempo real cada segundo
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
       setState(() {
@@ -44,35 +42,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
   void dispose() {
     _timer.cancel();
     super.dispose();
-  }
-
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _currentTime = DateTime.now();
-        _updateProgress();
-      });
-    });
-  }
-
-  void _updateProgress() {
-    if (_openTime == null || _closeTime == null) return;
-
-    DateTime now = DateTime.now();
-    DateTime startTime = DateTime(
-        now.year, now.month, now.day, _openTime!.hour, _openTime!.minute);
-    DateTime endTime = DateTime(
-        now.year, now.month, now.day, _closeTime!.hour, _closeTime!.minute);
-
-    if (now.isBefore(startTime)) {
-      setState(() => _progress = 0.0);
-    } else if (now.isAfter(endTime)) {
-      setState(() => _progress = 1.0);
-    } else {
-      double totalMinutes = endTime.difference(startTime).inMinutes.toDouble();
-      double elapsedMinutes = now.difference(startTime).inMinutes.toDouble();
-      setState(() => _progress = elapsedMinutes / totalMinutes);
-    }
   }
 
   void _logout(BuildContext context) async {
@@ -99,30 +68,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   : b['stock'].compareTo(a['stock']);
             }));
     });
-  }
-
-  void _listenToConfigChanges() {
-    FirebaseFirestore.instance
-        .collection('configuracion_distribuidores')
-        .doc('horarios')
-        .snapshots()
-        .listen((snapshot) {
-      if (snapshot.exists) {
-        setState(() {
-          _openTime = _parseFirestoreTime(snapshot.data()?['horaApertura']) ??
-              const TimeOfDay(hour: 8, minute: 0);
-          _closeTime = _parseFirestoreTime(snapshot.data()?['horaCierre']) ??
-              const TimeOfDay(hour: 18, minute: 0);
-          _updateProgress();
-        });
-      }
-    });
-  }
-
-  TimeOfDay? _parseFirestoreTime(String? timeString) {
-    if (timeString == null) return null;
-    final parts = timeString.split(":");
-    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 
   void _showRestockForm(BuildContext context, Map<String, dynamic> product) {
@@ -206,18 +151,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildTimeline() {
-    if (_openTime == null || _closeTime == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    DateTime now = DateTime.now();
-    DateTime openDateTime = DateTime(
-        now.year, now.month, now.day, _openTime!.hour, _openTime!.minute);
-    DateTime closeDateTime = DateTime(
-        now.year, now.month, now.day, _closeTime!.hour, _closeTime!.minute);
-
-    double progress = (now.difference(openDateTime).inMinutes /
-            closeDateTime.difference(openDateTime).inMinutes)
+    final openTime =
+        DateTime(_currentTime.year, _currentTime.month, _currentTime.day, 8);
+    final closeTime =
+        DateTime(_currentTime.year, _currentTime.month, _currentTime.day, 18);
+    final progress = (_currentTime.difference(openTime).inMinutes /
+            closeTime.difference(openTime).inMinutes)
         .clamp(0.0, 1.0);
 
     return Padding(
@@ -226,18 +165,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Horario: ${_openTime!.format(context)} - ${_closeTime!.format(context)}",
+            "Horario: ${DateFormat.Hm().format(openTime)} - ${DateFormat.Hm().format(closeTime)}",
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 5),
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: Colors.grey[300],
-            color: progress < 0.5
-                ? Colors.green
-                : (progress < 0.9 ? Colors.orange : Colors.red),
-            minHeight: 10,
-          ),
+          LinearProgressIndicator(value: progress),
           const SizedBox(height: 5),
           Text(
             "Hora actual: ${DateFormat.Hms().format(_currentTime)}",
@@ -349,6 +281,3 @@ class RestockForm extends StatelessWidget {
     );
   }
 }
-
-
-

@@ -44,7 +44,6 @@ class OrdersService {
   // Método para crear pedidos
   Future<void> createOrder(Map<String, dynamic> orderDetails) async {
     try {
-      print(orderDetails);
       final response = await _dio.post('/', data: orderDetails);
       if (response.statusCode != 201) {
         throw Exception('Error al crear el pedido: ${response.data}');
@@ -55,6 +54,7 @@ class OrdersService {
     }
   }
 
+  // Formatear el tiempo
   String formatTimestamp(Map<String, dynamic> timestamp) {
     final DateTime date =
         DateTime.fromMillisecondsSinceEpoch(timestamp['_seconds'] * 1000);
@@ -62,11 +62,40 @@ class OrdersService {
         .format(date); // Cambia el formato según tu preferencia
   }
 
+  // 🔹 Obtener pedidos filtrados por día, semana, mes o año
+  Future<List<dynamic>> getOrdersByFilter(String filter, DateTime date) async {
+    final year = date.year;
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    final week = ((date.day - 1) ~/ 7 + 1).toString(); // Semana del mes
+
+    String endpoint = "/ventas/dia/$year-$month-$day";
+
+    switch (filter) {
+      case "semana":
+        endpoint = "/ventas/semana/$year/$week";
+        break;
+      case "mes":
+        endpoint = "/ventas/mes/$year/$month";
+        break;
+      case "anio":
+        endpoint = "/ventas/anio/$year";
+        break;
+    }
+
+    try {
+      final response = await _dio.get(endpoint);
+      return response.data['pedidos'] ?? [];
+    } catch (e) {
+      print("Error al obtener pedidos: $e");
+      return [];
+    }
+  }
+
   // Listener
   // Método para actualizar estado del pedido
   Future<void> updateOrderStatus(String orderId, String status) async {
     try {
-
       // Envía el estado dentro de un objeto JSON
       final response = await _dio.put(
         '/estado_pedido/$orderId/',

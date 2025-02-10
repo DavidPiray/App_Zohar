@@ -3,6 +3,7 @@ import '../../widgets/animated_button.dart';
 import '../../widgets/animated_logo.dart';
 import '../../widgets/animated_title.dart';
 import '../../core/styles/typography.dart';
+import '../../core/styles/colors.dart';
 
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
@@ -15,15 +16,7 @@ class MainScreen extends StatelessWidget {
           // Fondo degradado
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFFB8E994),
-                  Color(0xFF6ABF69),
-                  Color(0xFF3B945E),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+              gradient: AppColors.degradadoPrincipal,
             ),
           ),
           LayoutBuilder(
@@ -73,7 +66,7 @@ class MainScreen extends StatelessWidget {
                               const SizedBox(height: 26),
                               AnimatedButton(
                                 label: 'Registrate',
-                                routeName: '/register',
+                                routeName: '/registro',
                                 backgroundColor: const Color.fromARGB(255, 86, 168, 84),
                                 maxWidth: isWideScreen ? 300 : double.infinity,
                                 textStyle: AppTypography.buttonText.copyWith(

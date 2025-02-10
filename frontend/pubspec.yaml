@@ -49,11 +49,21 @@ dependencies:
   permission_handler: ^11.3.1
   fl_chart: ^0.70.2
   flutter_secure_storage: ^9.2.4
-  intl: ^0.20.1
+  intl: ^0.20.2
   firebase_database: ^11.3.1
   pdf: ^3.11.2
   printing: ^5.14.0
   syncfusion_flutter_charts: ^28.1.41
+  firebase_storage: ^12.4.1
+  flutter_image_compress: ^2.4.0
+  geolocator: ^13.0.2
+  flutter_polyline_points: ^2.1.0
+  flutter_dotenv: ^5.2.1
+  url_launcher: ^6.3.1
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.0
+  google_places_flutter: ^2.0.9
+  geocoding: ^3.0.0
  
 
 dev_dependencies:

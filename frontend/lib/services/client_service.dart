@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
@@ -37,8 +38,6 @@ class ClientService {
 
       if (response.statusCode == 201) {
         try {
-          print("Intentando registrar en: ${_dio2.options.baseUrl}");
-
           final response2 = await _dio2.post('/', data: {
             'nombre': name,
             'email': email,
@@ -51,10 +50,6 @@ class ClientService {
               'longitude': location.longitude.toDouble(),
             },
           });
-
-          print(
-              "Código de estado del segundo request: ${response2.statusCode}");
-          print("Datos enviados");
 
           if (response2.statusCode == 201) {
             print("Registro segundo exitoso");
@@ -169,22 +164,25 @@ class ClientService {
     String? direccion,
     dynamic photo, // Puede ser `File` (Móvil) o `Uint8List` (Web)
     String? photoURL, // URL de la imagen en Firebase
+    Map<String, double>? ubicacion,
   }) async {
     try {
-      // Si el usuario ha seleccionado una nueva imagen, súbela a Firebase Storage
+      /* // Si el usuario ha seleccionado una nueva imagen, súbela a Firebase Storage
       if (photo != null) {
         photoURL = await uploadImage(photo);
-      }
-
+      } */
+      print('dentro de la funcion');
       // Datos a enviar
       final Map<String, dynamic> data = {
         'nombre': name,
         'celular': phone,
         'direccion': direccion,
-        if (photoURL != null)
-          'foto': photoURL, // Solo envía si hay una nueva foto
+        if (ubicacion != null) 'ubicacion': ubicacion,
+        /* if (photoURL != null)
+          'foto': photoURL, // Solo envía si hay una nueva foto */
       };
 
+      print('Datos: $data');
       // Enviar actualización al servidor
       final response = await _dio2.put('/$clientId', data: data);
 
@@ -202,6 +200,7 @@ class ClientService {
   Future<Map<String, String>> getClientInfo() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? clienteID = prefs.getString('clienteID');
+    print("Cliente: $clienteID");
     String? distribuidorID = prefs.getString('distribuidorID') ?? 'Planta';
 
     if (clienteID == null) {

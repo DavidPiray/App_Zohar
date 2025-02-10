@@ -89,8 +89,8 @@ class _MapScreenState extends State<MapScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.navigation),
         onPressed: _openGoogleMapsNavigation,
+        child: const Icon(Icons.navigation),
       ),
     );
   }
