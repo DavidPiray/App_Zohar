@@ -14,10 +14,6 @@ class DistributorService {
   Future<void> addDistributor(Map<String, String> distributor) async {
     try {
       final response = await _dioDist.post('/', data: distributor);
-      print('------------------------');
-      print(distributor);
-      print('------------------------');
-      print(response);
       if (response.statusCode != 201) {
         throw Exception('Error al agregar distribuidor: ${response.statusMessage}');
       }
@@ -165,9 +161,7 @@ class DistributorService {
   // Método para obtener el inventario de un distribuidor
   Future<List<dynamic>> getDistributorInventory(String distribuidorID) async {
     try {
-      print(distribuidorID);
       final response = await _dioDist.get('/inventario/$distribuidorID/');
-      print(response.data);
       if (response.statusCode == 200) {
         return response.data;
       } else {

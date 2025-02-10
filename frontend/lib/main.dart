@@ -6,13 +6,14 @@ import 'providers/auth_provider.dart';
 import 'providers/report_provider.dart'; // Asegúrate de importar esto
 import 'firebase_options.dart'; // Archivo generado por FlutterFire CLI
 import 'app_routes.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
+  await dotenv.load(fileName: ".env");
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider(create: (_) => AuthProvider()),
     //ChangeNotifierProvider(create: (_) => RealtimeProvider()),
@@ -26,7 +27,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
-      designSize: const Size(720, 1280), // Tamaño base de diseño
+      designSize: const Size(360, 690), // Tamaño base de diseño
       minTextAdapt: true, // Adaptación de texto
       splitScreenMode: true, // Modo para pantalla dividida
       builder: (context, child) {

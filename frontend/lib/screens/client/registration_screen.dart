@@ -1,79 +1,74 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
+import 'package:frontend/core/styles/colors.dart';
+import 'package:frontend/services/auth_service.dart';
+//import 'dart:io';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:image_picker/image_picker.dart';
+//import 'package:image_picker/image_picker.dart';
 import '../../widgets/animated_logo.dart';
 import '../../widgets/animated_title.dart';
-import '../../widgets/global_button.dart';
 import '../../widgets/animated_alert.dart';
+import '../../widgets/location_picker.dart';
 import '../../core/utils/validators.dart';
 import '../../services/client_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/google_maps_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _RegisterScreenState createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _formKey = GlobalKey<FormState>();
+  // Variables
   final ClientService clientService = ClientService();
-  final ImagePicker _picker = ImagePicker();
+  final AuthService authService = AuthService();
+  //final ImagePicker _picker = ImagePicker();
+  GoogleMapsService mapsService = GoogleMapsService();
+  final _formKey = GlobalKey<FormState>();
+  int _currentPage = 0; // Paginación
+  bool _isPasswordVisible = false;
+  bool _isPasswordConfirmVisible = false;
+  final TextEditingController _addressController = TextEditingController();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  Future<void> registerUser(String email, String password) async {
-    try {
-      UserCredential userCredential =
-          await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      print("Usuario registrado exitosamente: ${userCredential.user?.email}");
-    } on FirebaseAuthException catch (e) {
-      print("Error al registrar el usuario: ${e.message}");
-    }
-  }
-
-  String? _name, _email, _password, _confirmPassword, _phone;
+  // Variables para los datos
+  String? _name,
+      _email,
+      _password,
+      _confirmPassword,
+      _phone,
+      _address,
+      _distribuidorID;
   LatLng? _selectedLocation;
-  File? _selectedImage;
+  //File? _selectedImage;
 
-  void _handleImageSelection() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
-      AnimatedAlert.show(
-        // ignore: use_build_context_synchronously
-        context,
-        'Foto seleccionada',
-        'Se ha seleccionado una foto correctamente.',
-        type: AnimatedAlertType.success,
-      );
-    }
+  // Abrir el mapa para seleccionar ubicación
+  Future<void> _openLocationPicker() async {
+    _selectedLocation ??= const LatLng(-1.6635, -78.6547);
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPicker(
+          initialLocation: _selectedLocation!,
+          initialAddress: _address ?? "",
+          onLocationSelected: (
+            String address,
+            LatLng location,
+            String city,
+          ) {
+            setState(() {
+              _address = address;
+              _selectedLocation = location;
+              _addressController.text = address;
+            });
+          },
+        ),
+      ),
+    );
   }
 
-  void _handleLocationSelection() async {
-    final LatLng? location =
-        await Navigator.pushNamed(context, '/map') as LatLng?;
-    if (location != null) {
-      setState(() {
-        _selectedLocation = location;
-      });
-    } else {
-      AnimatedAlert.show(
-        // ignore: use_build_context_synchronously
-        context,
-        'Error',
-        'No se seleccionó ninguna ubicación.',
-      );
-    }
-  }
-
+  // Enviar los datos 
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
       if (_password != _confirmPassword) {
@@ -85,35 +80,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
         return;
       }
-
       _formKey.currentState!.save();
-
       try {
         final result = await clientService.registerClient(
           name: _name!,
           email: _email!,
-          password: _password!,
+          address: _address!,
           phone: _phone!,
+          zonaID: 'zona1',
+          distribuidorID: _distribuidorID!,
+          //photoURL: _selectedImage,
+          password: _password!,
           location: _selectedLocation ??
-              LatLng(48.858844, 2.294351), // Torre Eiffel (por defecto)
-          photo: _selectedImage,
+              const LatLng(48.858844, 2.294351), // Torre Eiffel (por defecto)
         );
 
         if (result) {
-          await registerUser(_email!,_password!);
+          await authService.registerUser(_email!, _password!);
           AnimatedAlert.show(
+            // ignore: use_build_context_synchronously
             context,
             'Registro Exitoso',
             'El cliente se registró satisfactoriamente.',
             type: AnimatedAlertType.success,
             actionLabel: 'Continuar',
             action: () {
-              Navigator.pop(context); // Cerrar diálogo
               Navigator.pushReplacementNamed(context, '/login');
             },
           );
         } else {
           AnimatedAlert.show(
+            // ignore: use_build_context_synchronously
             context,
             'Error',
             'No se pudo completar el registro.',
@@ -121,6 +118,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       } catch (e) {
         AnimatedAlert.show(
+          // ignore: use_build_context_synchronously
           context,
           'Error',
           e.toString(),
@@ -136,9 +134,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         preferredSize: const Size.fromHeight(80), // Altura personalizada
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF3B945E),
+            color: AppColors.barra,
             boxShadow: [
               BoxShadow(
+                // ignore: deprecated_member_use
                 color: Colors.black.withOpacity(0.3),
                 blurRadius: 10,
                 offset: const Offset(0, 5),
@@ -172,21 +171,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // Fondo degradado
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFFB8E994),
-                  Color(0xFF6ABF69),
-                  Color(0xFF3B945E),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+              gradient: AppColors.degradadoPrincipal,
             ),
           ),
           LayoutBuilder(
             builder: (context, constraints) {
               bool isWideScreen = constraints.maxWidth > 600;
-
               return Row(
                 children: [
                   if (isWideScreen)
@@ -212,6 +202,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const Column(
                             children: [
                               SizedBox(height: 10),
+                              AnimatedLogo(size: 100),
+                              SizedBox(height: 10),
                             ],
                           ),
                         Center(
@@ -225,40 +217,122 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _buildTextField(
-                                        'Nombre', (value) => _name = value,
-                                        validator: Validators.validateName),
-                                    const SizedBox(height: 10),
-                                    _buildTextField('Correo Electrónico',
-                                        (value) => _email = value,
-                                        validator: Validators.validateEmail,
-                                        keyboardType:
-                                            TextInputType.emailAddress),
-                                    const SizedBox(height: 10),
-                                    _buildTextField('Contraseña',
-                                        (value) => _password = value,
-                                        validator: Validators.validatePassword,
-                                        obscureText: true),
-                                    const SizedBox(height: 10),
-                                    _buildTextField(
-                                      'Confirmar Contraseña',
-                                      (value) => _confirmPassword = value,
-                                      obscureText: true,
+                                    IndexedStack(
+                                      index:
+                                          _currentPage, // Muestra la página seleccionada
+                                      children: [
+                                        // Primera página del formulario
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const SizedBox(height: 15),
+                                            _buildTextField('Nombre',
+                                                (value) => _name = value,
+                                                validator:
+                                                    Validators.validateName,
+                                                prefixIcon: Icons.person),
+                                            const SizedBox(height: 15),
+                                            _buildTextField(
+                                                'Correo Electrónico',
+                                                (value) => _email = value,
+                                                validator:
+                                                    Validators.validateEmail,
+                                                keyboardType:
+                                                    TextInputType.emailAddress,
+                                                prefixIcon: Icons.email),
+                                            const SizedBox(height: 15),
+                                            _buildTextField(
+                                              'Contraseña',
+                                              (value) => _password = value,
+                                              validator:
+                                                  Validators.validatePassword,
+                                              obscureText: true,
+                                              prefixIcon: Icons.lock,
+                                              isPasswordField: true,
+                                            ),
+                                            const SizedBox(height: 15),
+                                            _buildTextField(
+                                              'Confirmar Contraseña',
+                                              (value) =>
+                                                  _confirmPassword = value,
+                                              obscureText: true,
+                                              prefixIcon: Icons.lock,
+                                              isPasswordConfirmField: true,
+                                            ),
+                                          ],
+                                        ),
+                                        // Segunda página del formulario
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const SizedBox(height: 15),
+                                            _buildTextField(
+                                                'Código de Distribuidor (Opcional)',
+                                                (value) =>
+                                                    _distribuidorID = value,
+                                                prefixIcon:
+                                                    Icons.local_shipping),
+                                            const SizedBox(height: 10),
+                                            _buildTextField('Teléfono',
+                                                (value) => _phone = value,
+                                                validator:
+                                                    Validators.validatePhone,
+                                                keyboardType:
+                                                    TextInputType.phone,
+                                                prefixIcon: Icons.phone),
+                                            const SizedBox(height: 10),
+                                            _buildTextField(
+                                              'Dirección',
+                                              (value) {},
+                                              keyboardType:
+                                                  TextInputType.streetAddress,
+                                              prefixIcon: Icons.place,
+                                              isLocationField: true,
+                                              onSuffixIconPressed:
+                                                  _openLocationPicker,
+                                            ),
+                                            const SizedBox(height: 10),
+                                            const SizedBox(height: 16),
+                                            //_buildPhotoPicker(),
+                                          ],
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 10),
-                                    _buildTextField(
-                                        'Teléfono', (value) => _phone = value,
-                                        validator: Validators.validatePhone,
-                                        keyboardType: TextInputType.phone),
-                                    const SizedBox(height: 16),
-                                    _buildLocationPicker(),
-                                    const SizedBox(height: 16),
-                                    _buildPhotoPicker(),
                                     const SizedBox(height: 25),
-                                    GlobalButton(
-                                      label: 'Registrarse',
-                                      backgroundColor: const Color(0xFF3B945E),
-                                      onPressed: _submitForm,
+                                    // Botones de navegación
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        if (_currentPage >
+                                            0) // Si no estamos en la primera página, mostramos "Atrás"
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                _currentPage--; // Retrocede a la página anterior
+                                              });
+                                            },
+                                            child: const Text("Atrás"),
+                                          ),
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            if (_currentPage == 0) {
+                                              // Si estamos en la primera página, pasamos a la segunda
+                                              setState(() {
+                                                _currentPage = 1;
+                                              });
+                                            } else {
+                                              // Si estamos en la segunda página, enviamos el formulario
+                                              _submitForm();
+                                            }
+                                          },
+                                          child: Text(_currentPage == 0
+                                              ? "Siguiente"
+                                              : "Registrarse"),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -278,14 +352,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // Widget para construir los espacios de texto
   Widget _buildTextField(
     String label,
     void Function(String?) onSave, {
     String? Function(String?)? validator,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
+    IconData? prefixIcon,
+    bool isPasswordField = false,
+    bool isPasswordConfirmField = false,
+    bool isLocationField = false,
+    VoidCallback? onSuffixIconPressed,
+    bool enabled = true,
   }) {
     return TextFormField(
+      controller: isLocationField ? _addressController : null,
       decoration: InputDecoration(
         labelText: label,
         filled: true,
@@ -294,67 +376,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide.none,
         ),
+        prefixIcon:
+            prefixIcon != null ? Icon(prefixIcon, color: Colors.grey) : null,
+        // Icono de mostrar/ocultar contraseña
+        suffixIcon: isPasswordField
+            ? IconButton(
+                icon: Icon(
+                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  color: Colors.grey,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isPasswordVisible = !_isPasswordVisible;
+                  });
+                },
+              )
+            : isPasswordConfirmField
+                ? IconButton(
+                    icon: Icon(
+                      _isPasswordConfirmVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordConfirmVisible = !_isPasswordConfirmVisible;
+                      });
+                    },
+                  )
+                : isLocationField
+                    ? IconButton(
+                        icon: const Icon(Icons.map, color: Colors.grey),
+                        onPressed: onSuffixIconPressed, // Abre el mapa
+                      )
+                    : null,
       ),
-      obscureText: obscureText,
+      obscureText: isPasswordField
+          ? !_isPasswordVisible
+          : (isPasswordConfirmField ? !_isPasswordConfirmVisible : obscureText),
       keyboardType: keyboardType,
       validator: validator,
       onSaved: onSave,
-    );
-  }
-
-  Widget _buildLocationPicker() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        bool isWideScreen = constraints.maxWidth > 600;
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center, // Centrar los botones
-          children: [
-            Expanded(
-              flex: isWideScreen ? 0 : 1, // Para pantallas pequeñas expandir
-              child: GlobalButton(
-                label: 'Seleccionar Ubicación',
-                backgroundColor: const Color.fromARGB(255, 86, 168, 84),
-                onPressed: _handleLocationSelection,
-                textStyle: TextStyle(
-                    fontSize:
-                        isWideScreen ? 18 : 16, // Tamaño de fuente dinámico
-                    color: Colors.white),
-              ),
-            ),
-            const SizedBox(width: 16),
-            if (_selectedLocation != null)
-              const Icon(Icons.check, color: Colors.white),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildPhotoPicker() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        bool isWideScreen = constraints.maxWidth > 600;
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center, // Centrar los botones
-          children: [
-            Expanded(
-              flex: isWideScreen ? 0 : 1, // Para pantallas pequeñas expandir
-              child: GlobalButton(
-                label: 'Seleccionar Foto (Opcional)',
-                backgroundColor: const Color.fromARGB(255, 86, 168, 84),
-                onPressed: _handleImageSelection,
-                textStyle: TextStyle(
-                    fontSize:
-                        isWideScreen ? 18 : 16, // Tamaño de fuente dinámico
-                    color: Colors.white),
-              ),
-            ),
-            const SizedBox(width: 16),
-            if (_selectedImage != null)
-              const Icon(Icons.check, color: Colors.white),
-          ],
-        );
-      },
+      enabled: enabled,
     );
   }
 }

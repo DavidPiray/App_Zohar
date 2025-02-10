@@ -123,7 +123,7 @@ const OrderController = {
 
       // Si el estado cambia a "completado", actualizar reportes y eliminar de Firestore
       if (estado === 'completado') {
-        const { distribuidorID, productos } = pedido;
+        const { distribuidorID, productos, total } = pedido;
 
         for (const producto of productos) {
           const { id_producto, cantidad } = producto;
@@ -138,12 +138,16 @@ const OrderController = {
             return res.status(500).json({ error: `Error al reducir inventario: ${error.message}` });
           }
         }
-
-        // 🛑 Eliminar pedido de Firebase Realtime Database cuando se completa
+        // Eliminar pedido de Firebase Realtime Database cuando se completa
         try {
           await Order.updateSalesReport(distribuidorID, total, productos);
           await Order.updateTopProducts(productos);
-          await deleteOrderFromRealtime(id);
+          try {
+            await deleteOrderFromRealtime(id);
+          } catch (firebaseDeleteError) {
+            console.error(`Error eliminando pedido de Firebase: ${firebaseDeleteError.message}`);
+            // No retornamos 500 aquí para que no afecte la actualización del pedido
+          }
         } catch (firebaseDeleteError) {
           console.error(`Error eliminando pedido de Firebase: ${firebaseDeleteError.message}`);
           return res.status(500).json({ error: `Error eliminando pedido de Firebase: ${firebaseDeleteError.message}` });

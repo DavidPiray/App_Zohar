@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:frontend/screens/distributor/map_screen.dart';
+import 'package:frontend/services/client_service.dart';
 import 'package:frontend/services/product_service.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../services/distributor_service.dart';
 import '../../services/orders_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/realtime_service.dart';
+import '../../services/location_service.dart';
 import '../../widgets/animated_alert.dart';
 
 class DistributorScreen extends StatefulWidget {
@@ -17,10 +23,18 @@ class DistributorScreen extends StatefulWidget {
 
 class _DistributorScreenState extends State<DistributorScreen> {
   final DistributorService distributorService = DistributorService();
+  final ClientService clientService = ClientService();
   final OrdersService ordersService = OrdersService();
   final ProductService productService = ProductService();
   final AuthService authService = AuthService();
   final RealtimeService realtimeService = RealtimeService();
+
+  final LocationService locationService = LocationService();
+
+  // ignore: unused_field
+  LatLng? _distributorPosition;
+  // ignore: unused_field
+  LatLng? _clientPosition;
 
   late Future<List<dynamic>> _orders;
   late Future<List<dynamic>> _products;
@@ -56,18 +70,21 @@ class _DistributorScreenState extends State<DistributorScreen> {
     _listenToRealtimeUpdates();
   }
 
+  // Para obtener los pedidos
   void _fetchOrders() {
     setState(() {
       _orders = distributorService.getOrdersByDistributor(distributorId);
     });
   }
 
+  // Para obtener los productos
   void _fetchProducts() {
     setState(() {
       _products = productService.getProducts();
     });
   }
 
+  // Para escuchar los pedidos nuevos en tiempor real
   void _listenToRealtimeUpdates() {
     _realtimeStream = realtimeService.listenToOrders();
     _realtimeStream.listen((event) {
@@ -78,6 +95,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
     });
   }
 
+  // Para los filtros
   List<dynamic> _filterAndSortOrders(List<dynamic> orders) {
     orders = orders.where((order) => order['estado'] != 'completado').toList();
 
@@ -111,6 +129,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
     return orders;
   }
 
+  // Limpiar los filtros
   void _clearFilters() {
     setState(() {
       selectedStatus = 'todos';
@@ -120,24 +139,43 @@ class _DistributorScreenState extends State<DistributorScreen> {
     });
   }
 
-  void _logout(BuildContext context) async {
-    await authService.logout();
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
+  // Desplazamiento de la barra lateral
   void _toggleSidebar() {
     setState(() {
       isSidebarVisible = !isSidebarVisible;
     });
   }
 
-  void _updateOrderStatus(String orderId, String currentStatus) async {
+/*   void _updateOrderStatus(String orderId, String currentStatus,
+      Map<String, dynamic> clientLocation) async {
     try {
       String? nextStatus = orderStatuses[currentStatus];
       if (nextStatus == null) return;
       await ordersService.updateOrderStatus(orderId, nextStatus);
-
+      //
+      if (nextStatus == "en progreso") {
+        // Obtener la ubicación del distribuidor
+        Position distributorLocation =
+            await locationService.getCurrentLocation();
+        _distributorPosition =
+            LatLng(distributorLocation.latitude, distributorLocation.longitude);
+        print('Primero $distributorLocation');
+        print('Segundo $_distributorPosition');
+        // Obtener la ruta entre el distribuidor y el cliente
+        List<LatLng> route = await googleMapsService.getRoute(
+          origin: _distributorPosition!,
+          destination:
+              LatLng(clientLocation['latitude'], clientLocation['longitude']),
+        );
+        print('Cliente $clientLocation');
+//
+        setState(() {
+          _polylineCoordinates = route;
+          print('poli: $_polylineCoordinates');
+        });
+      }
       AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
         context,
         'Éxito',
         'El pedido se ha actualizado a "$nextStatus".',
@@ -146,6 +184,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
       _fetchOrders();
     } catch (error) {
       AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
         context,
         'Error',
         'No se pudo actualizar el pedido: $error',
@@ -153,13 +192,27 @@ class _DistributorScreenState extends State<DistributorScreen> {
       );
     }
   }
+ */
 
-  void _goToInventory() {
-    Navigator.pushNamed(context, '/inventory_screen');
+  // NAVEGADORES
+  // Lógica para cerrar sesión
+  void _logout(BuildContext context) async {
+    await authService.logout();
+    // ignore: use_build_context_synchronously
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
+  void _goToInventory() {
+    Navigator.pushNamed(context, '/inventario-distribuidor');
+  }
+
+  void _goConfig() {
+    Navigator.pushNamed(context, '/inventario-distribuidor');
+  }
+
+
   void _goToProfile() {
-    Navigator.pushNamed(context, '/profileDistributor');
+    Navigator.pushNamed(context, '/perfil-distribuidor');
   }
 
   void _goToReports() {
@@ -170,6 +223,121 @@ class _DistributorScreenState extends State<DistributorScreen> {
     );
   }
 
+  // Actualizar las ubicaciones
+  Future<LatLng?> _updateLocation(String customerId, String orderId) async {
+    print('📌 Buscando ubicación del cliente $customerId...');
+
+    Map<String, dynamic>? clientLocation =
+        await clientService.getCustomerLocation(customerId);
+
+    if (clientLocation == null ||
+        !clientLocation.containsKey('latitude') ||
+        !clientLocation.containsKey('longitude')) {
+      print('❌ No se encontró la ubicación del cliente.');
+      AnimatedAlert.show(
+        context,
+        'Error',
+        'No se encontró la ubicación del cliente.',
+        type: AnimatedAlertType.error,
+      );
+      return null;
+    }
+
+    print('✅ Cliente encontrado: $clientLocation');
+
+    Position distributorLocation = await locationService.getCurrentLocation();
+    LatLng distributorLatLng =
+        LatLng(distributorLocation.latitude, distributorLocation.longitude);
+
+    // Guardar ubicación en Firebase
+    await realtimeService.saveDistributorLocation(
+        orderId, distributorLatLng.latitude, distributorLatLng.longitude);
+
+    // Escuchar cambios en la ubicación del distribuidor
+    Geolocator.getPositionStream().listen((Position newPosition) {
+      if (mounted) {
+        setState(() {
+          _distributorPosition =
+              LatLng(newPosition.latitude, newPosition.longitude);
+        });
+      }
+      realtimeService.updateDistributorLocation(
+          orderId, newPosition.latitude, newPosition.longitude);
+      print('🔄 Actualizando distribuidor en Firebase: $newPosition');
+    });
+
+    return LatLng(
+      clientLocation['latitude'] as double,
+      clientLocation['longitude'] as double,
+    );
+  }
+
+  // Para actualizar el estado y sincronizar ubicaciones
+  void _updateOrderStatusAndTrackLocation(
+      String orderId, String currentStatus, String customerId) async {
+    try {
+      String? nextStatus = orderStatuses[currentStatus];
+      if (nextStatus == null) return;
+      await ordersService.updateOrderStatus(
+          orderId, nextStatus); // Actualiza el estado en Firestore
+      if (nextStatus == "en progreso") {
+        // Obtener la ubicación del cliente desde Firestore
+        Map<String, dynamic>? clientLocation =
+            await clientService.getCustomerLocation(customerId);
+        if (clientLocation == null) {
+          AnimatedAlert.show(
+            // ignore: use_build_context_synchronously
+            context,
+            'Error',
+            'No se encontró la ubicación del cliente.',
+            type: AnimatedAlertType.error,
+          );
+          return;
+        }
+        _clientPosition = LatLng(clientLocation['latitude'] as double,
+            clientLocation['longitude'] as double);
+        // Obtener la ubicación del distribuidor
+        Position distributorLocation =
+            await locationService.getCurrentLocation();
+        _distributorPosition =
+            LatLng(distributorLocation.latitude, distributorLocation.longitude);
+        // Guardar ubicación inicial en Firebase Realtime Database
+        await realtimeService.saveDistributorLocation(orderId,
+            distributorLocation.latitude, distributorLocation.longitude);
+
+        // Escuchar cambios en la ubicación del distribuidor y actualizar Firebase en tiempo real
+        Geolocator.getPositionStream().listen((Position newPosition) {
+          realtimeService.updateDistributorLocation(
+              orderId, newPosition.latitude, newPosition.longitude);
+          setState(() {
+            _distributorPosition =
+                LatLng(newPosition.latitude, newPosition.longitude);
+          });
+        });
+      } else if (nextStatus == "completado") {
+        // Eliminar ubicación del distribuidor en Firebase
+        await realtimeService.removeDistributorLocation(orderId);
+      }
+      AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
+        context,
+        'Éxito',
+        'El pedido se ha actualizado a "$nextStatus".',
+        type: AnimatedAlertType.success,
+      );
+      _fetchOrders();
+    } catch (error) {
+      AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
+        context,
+        'Error',
+        'No se pudo actualizar el pedido: $error',
+        type: AnimatedAlertType.error,
+      );
+    }
+  }
+
+  // Página Principal
   @override
   Widget build(BuildContext context) {
     final bool isWideScreen = MediaQuery.of(context).size.width > 600;
@@ -209,6 +377,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
     );
   }
 
+  // Constructor de la barra lateral
   Widget _buildSidebar() {
     return Container(
       width: 250,
@@ -217,6 +386,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
     );
   }
 
+  // Contenido de la barra lateral
   Widget _buildSidebarContent() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -248,6 +418,11 @@ class _DistributorScreenState extends State<DistributorScreen> {
           leading: const Icon(Icons.report, color: Colors.white),
           title: const Text('Reportes', style: TextStyle(color: Colors.white)),
           onTap: _goToReports,
+        ),
+        ListTile(
+          leading: const Icon(Icons.settings, color: Colors.white),
+          title: const Text('Configuraciones', style: TextStyle(color: Colors.white)),
+          onTap: () => _goConfig,
         ),
         ListTile(
           leading: const Icon(Icons.logout, color: Colors.white),
@@ -340,15 +515,100 @@ class _DistributorScreenState extends State<DistributorScreen> {
                                     /* Text('IdOrder: $orderId'), */
                                   ],
                                 ),
-                                trailing: orderStatuses.containsKey(orderStatus)
-                                    ? ElevatedButton(
-                                        onPressed: () => _updateOrderStatus(
-                                            orderId, orderStatus),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (orderStatuses.containsKey(orderStatus))
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            _updateOrderStatusAndTrackLocation(
+                                          orderId,
+                                          orderStatus,
+                                          order['clienteID'],
+                                        ),
                                         child: Text(orderStatus == 'pendiente'
                                             ? 'Entregar'
                                             : 'Completado'),
-                                      )
-                                    : null,
+                                      ),
+                                    if (orderStatus == "en progreso")
+                                      IconButton(
+                                        icon: const Icon(Icons.map,
+                                            color: Colors.blue),
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (context) {
+                                              return FutureBuilder<LatLng?>(
+                                                future: _updateLocation(
+                                                    order['clienteID'],
+                                                    orderId),
+                                                builder: (context, snapshot) {
+                                                  if (snapshot
+                                                          .connectionState ==
+                                                      ConnectionState.waiting) {
+                                                    return const AlertDialog(
+                                                      title: Text(
+                                                          'Cargando ubicación...'),
+                                                      content: Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          CircularProgressIndicator(),
+                                                          SizedBox(height: 10),
+                                                          Text(
+                                                              'Obteniendo datos del mapa...')
+                                                        ],
+                                                      ),
+                                                    );
+                                                  }
+
+                                                  if (snapshot.hasError ||
+                                                      snapshot.data == null) {
+                                                    return AlertDialog(
+                                                      title:
+                                                          const Text('Error'),
+                                                      content: const Text(
+                                                          'No se pudo obtener la ubicación.'),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                  context),
+                                                          child: const Text(
+                                                              'Cerrar'),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  }
+
+                                                  WidgetsBinding.instance
+                                                      .addPostFrameCallback(
+                                                          (_) {
+                                                    Navigator.pop(
+                                                        context); // Cerrar el diálogo de carga
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            MapScreen(
+                                                          orderId: orderId,
+                                                          clientLocation:
+                                                              snapshot.data!,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  });
+
+                                                  return Container(); // Evita mostrar algo innecesario
+                                                },
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
+                                  ],
+                                ),
                               ),
                             );
                           },
@@ -366,105 +626,62 @@ class _DistributorScreenState extends State<DistributorScreen> {
     );
   }
 
+  // Constructor de los filtros
   Widget _buildFilters() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14.0),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButton<String>(
-                  value: selectedStatus,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedStatus = value!;
-                    });
-                  },
-                  items: const [
-                    DropdownMenuItem(value: 'todos', child: Text('Todos')),
-                    DropdownMenuItem(
-                        value: 'pendiente', child: Text('Pendiente')),
-                    DropdownMenuItem(
-                        value: 'en progreso', child: Text('En progreso')),
-                    DropdownMenuItem(
-                        value: 'cancelado', child: Text('Cancelado')),
-                  ],
-                ),
+          SizedBox(
+            width: 150, // Ajusta el tamaño según sea necesario
+            child: DropdownButtonFormField<String>(
+              value: selectedStatus,
+              onChanged: (value) {
+                setState(() {
+                  selectedStatus = value!;
+                });
+              },
+              decoration: const InputDecoration(
+                labelText: 'Estado',
+                border: OutlineInputBorder(),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    final pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (pickedDate != null) {
-                      setState(() {
-                        selectedDate = pickedDate;
-                      });
-                    }
-                  },
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Fecha',
-                      border: OutlineInputBorder(),
-                    ),
-                    child: Text(
-                      selectedDate != null
-                          ? DateFormat('yyyy-MM-dd').format(selectedDate!)
-                          : 'Selecciona una fecha',
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FutureBuilder<List<dynamic>>(
-                  future: _products,
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    final products = snapshot.data!;
-                    return DropdownButton<String>(
-                      value: selectedProduct,
-                      onChanged: (value) {
-                        setState(() {
-                          selectedProduct = value;
-                        });
-                      },
-                      hint: const Text('Selecciona un producto'),
-                      items: products
-                          .map<DropdownMenuItem<String>>((product) =>
-                              DropdownMenuItem<String>(
-                                value: product['id_producto'],
-                                child: Text(
-                                    product['nombre_producto'] ?? 'Sin nombre'),
-                              ))
-                          .toList(),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              onPressed: _clearFilters,
-              child: const Text('Limpiar filtros'),
+              items: const [
+                DropdownMenuItem(value: 'todos', child: Text('Todos')),
+                DropdownMenuItem(value: 'pendiente', child: Text('Pendiente')),
+                DropdownMenuItem(
+                    value: 'en progreso', child: Text('En progreso')),
+                DropdownMenuItem(value: 'cancelado', child: Text('Cancelado')),
+              ],
             ),
+          ),
+
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.calendar_today, color: Colors.blue),
+            onPressed: () async {
+              final pickedDate = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (pickedDate != null) {
+                setState(() {
+                  selectedDate = pickedDate;
+                });
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.clear, color: Colors.red),
+            onPressed: _clearFilters,
           ),
         ],
       ),
     );
   }
 
+  // Controlador de Paginación
   Widget _buildPaginationControls(int totalPages) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,

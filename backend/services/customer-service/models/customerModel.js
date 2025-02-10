@@ -20,9 +20,13 @@ const Customer = {
     const exists = await this.existsByEmailOrPhone(email, celular);
     const customerRef = db.collection('clientes');
     if (exists) {
+      console.log( { error: 'Ya existe una cuenta vinculada al correo y/o celular ingresados.' });
       return { error: 'Ya existe una cuenta vinculada al correo y/o celular ingresados.' };
     }
-    await customerRef.add(customerData);
+    const newCustomerRef = customerRef.doc(); 
+    const newCustomerData = { ...customerData, id_cliente: newCustomerRef.id }
+
+    await newCustomerRef.set(newCustomerData);
     return { message: 'Cliente creado con éxito!' };
   },
 

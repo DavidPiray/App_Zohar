@@ -16,7 +16,7 @@ class DioClient {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         // Omitir el token en rutas públicas
-        if (options.path.contains('/register')) {
+        if (options.path.contains('/register')|| options.path.contains('/clientes')) {
           return handler.next(options);
         }
         // Obtener el token almacenado
