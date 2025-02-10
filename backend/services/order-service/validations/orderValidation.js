@@ -13,7 +13,7 @@ const createOrderSchema = Joi.object({
       })
     ).min(1).required(),
     fecha: Joi.date().default(() => new Date()),
-  total: Joi.number.required(),
+  total: Joi.number().min(0).required(),
 });
 
 const updateOrderSchema = Joi.object({
@@ -27,7 +27,7 @@ const updateOrderSchema = Joi.object({
     })
   )
   .optional(),
-  total: Joi.number.optional(),
+  total: Joi.number().min(0).optional(),
 });
 
 module.exports = {

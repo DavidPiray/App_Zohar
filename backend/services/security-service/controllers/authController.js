@@ -50,10 +50,11 @@ const AuthController = {
   },
 
   async updatePassword(req, res) {
-    const { clientId } = req.params;
-    const { oldPassword, newPassword } = req.body;
-    const { email } = req.body
-
+    const { oldPassword, newPassword, email } = req.body;
+    if (!email) {
+      console.error({ error: 'El email es requerido' });
+      return res.status(400).json({ error: 'El email es requerido' });
+    }
     const { error } = updatePasswordSchema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 

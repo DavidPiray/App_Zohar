@@ -5,8 +5,10 @@ const { logAuditEvent } = require('../shared/models/auditModel');
 const CustomerController = {
   // Crear un cliente
   async create(req, res) {
+    console.log("Datos recibidos:", req.body);
     const { error } = createCustomerSchema.validate(req.body);
     if (error) {
+      console.log({ error: error.details[0].message });
       return res.status(400).json({ error: error.details[0].message });
     }
     const cliente = {
@@ -24,7 +26,6 @@ const CustomerController = {
         'Crear',
         'Clientes',
         response.id, // ID del cliente creado
-        req.user.email, // Usuario autenticado (de req.user)
       );
     } catch (error) {
       console.error('Fallo al crear un cliente:', error.message);
@@ -72,7 +73,7 @@ const CustomerController = {
         'Actualizar',
         'Clientes',
         req.params.id,
-        req.user.email,
+        //req.user.email,
         {
           oldValue: oldData,
           newValue: req.body,
