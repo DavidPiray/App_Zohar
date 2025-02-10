@@ -34,7 +34,7 @@ class _DirectorScreenState extends State<DirectorScreen> {
     final bool isWideScreen = MediaQuery.of(context).size.width > 800;
 
     return Wrapper(
-      userRole: "gerente", // 🔹 PASA EL ROL DEL USUARIO
+      userRole: "gerente", // PASA EL ROL DEL USUARIO
       child: Row(
         children: [
           Expanded(

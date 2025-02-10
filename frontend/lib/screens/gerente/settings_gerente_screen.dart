@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../../core/styles/colors.dart';
+import '../../widgets/wrapper.dart';
+
 class ManagerSettingsScreen extends StatefulWidget {
   const ManagerSettingsScreen({super.key});
 
@@ -112,38 +115,58 @@ class _ManagerSettingsScreenState extends State<ManagerSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('⚙ Configuración del Gerente')),
-      body: Padding(
+    return Wrapper(
+      userRole: "gerente", // 🔹 PASA EL ROL DEL USUARIO
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('⏰ Horario de la Planta',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Card(
+          elevation: 5,
+          color: AppColors.back,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Apertura: ${_openingTime.format(context)}'),
-                ElevatedButton(
-                  onPressed: () => _pickTime(true),
-                  child: const Text('Seleccionar'),
+                const Text(
+                  "⚙ Configuración del Gerente",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  '⏰ Horario de la Planta',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Apertura: ${_openingTime.format(context)}'),
+                    ElevatedButton(
+                      onPressed: () => _pickTime(true),
+                      child: const Text('Seleccionar'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Cierre: ${_closingTime.format(context)}'),
+                    ElevatedButton(
+                      onPressed: () => _pickTime(false),
+                      child: const Text('Seleccionar'),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Cierre: ${_closingTime.format(context)}'),
-                ElevatedButton(
-                  onPressed: () => _pickTime(false),
-                  child: const Text('Seleccionar'),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );

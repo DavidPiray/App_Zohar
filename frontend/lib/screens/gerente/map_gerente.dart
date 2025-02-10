@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:frontend/services/distributor_service.dart';
 
+import '../../core/styles/colors.dart';
+import '../../widgets/wrapper.dart';
+
 class ManagerMapScreen extends StatefulWidget {
   const ManagerMapScreen({super.key});
 
@@ -69,12 +72,11 @@ class _ManagerMapScreenState extends State<ManagerMapScreen> {
         _loading = false;
       });
     } catch (error) {
-      print("❌ Error cargando distribuidores: $error");
       setState(() => _loading = false);
     }
   }
 
-  // 🔹 Mostrar información del distribuidor en un modal
+  //  Mostrar información del distribuidor en un modal
   void _showDistributorInfo(Map<String, dynamic> distributor) {
     showDialog(
       context: context,
@@ -104,20 +106,48 @@ class _ManagerMapScreenState extends State<ManagerMapScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('📍 Distribuidores Activos')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _initialPosition,
-                zoom: 12,
+ @override
+Widget build(BuildContext context) {
+  return Wrapper(
+    userRole: "gerente", 
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Card(
+        elevation: 5,
+        color: AppColors.back,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              const Text(
+                "📍 Distribuidores Activos",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              markers: _markers,
-              onMapCreated: (controller) => _mapController = controller,
-            ),
-    );
-  }
+              const SizedBox(height: 10),
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : GoogleMap(
+                        initialCameraPosition: CameraPosition(
+                          target: _initialPosition,
+                          zoom: 12,
+                        ),
+                        markers: _markers,
+                        onMapCreated: (controller) => _mapController = controller,
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 }

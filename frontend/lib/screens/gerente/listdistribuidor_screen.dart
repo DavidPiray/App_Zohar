@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../core/styles/colors.dart';
 import '../../services/distributor_service.dart';
+import '../../widgets/wrapper.dart';
 
 class ListdistribuidorScreen extends StatefulWidget {
   @override
@@ -21,6 +23,59 @@ class _ListdistribuidorScreenState extends State<ListdistribuidorScreen> {
   void initState() {
     super.initState();
     _fetchDistributors();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isWideScreen = MediaQuery.of(context).size.width > 800;
+
+    return Wrapper(
+      userRole: "gerente",
+      child: Row(
+        children: [
+          Expanded(
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Card(
+                    elevation: 5,
+                    color: AppColors.back,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          _buildSearchBar(),
+                          Expanded(
+                            child: isLoading
+                                ? const Center(
+                                    child: CircularProgressIndicator())
+                                : filteredDistributors.isEmpty
+                                    ? const Center(
+                                        child: Text(
+                                          'No hay distribuidores disponibles.',
+                                          style: TextStyle(
+                                              fontSize: 18,
+                                              color: Colors.black),
+                                        ),
+                                      )
+                                    : _buildDistributorList(),
+                          ),
+                          _buildAddDistributorButton(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _fetchDistributors() async {
@@ -58,91 +113,6 @@ class _ListdistribuidorScreenState extends State<ListdistribuidorScreen> {
     });
   }
 
-  void _toggleSidebar() {
-    setState(() {
-      isSidebarVisible = !isSidebarVisible;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isWideScreen = MediaQuery.of(context).size.width > 800;
-
-    return Scaffold(
-      key: _scaffoldKey,
-      appBar: AppBar(
-        title: const Text('Lista de Distribuidores'),
-        backgroundColor: const Color(0xFF3B945E),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            if (!isWideScreen) {
-              _scaffoldKey.currentState?.openDrawer();
-            } else {
-              _toggleSidebar();
-            }
-          },
-        ),
-        
-      ),
-      drawer: !isWideScreen ? _buildDrawer() : null,
-      body: Row(
-        children: [
-          if (isWideScreen && isSidebarVisible) _buildSidebar(),
-          Expanded(
-            child: Stack(
-              children: [
-                _buildBackground(),
-                Column(
-                  children: [
-                    _buildSearchBar(),
-                    Expanded(
-                      child: isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : filteredDistributors.isEmpty
-                              ? const Center(
-                                  child: Text(
-                                    'No hay distribuidores disponibles.',
-                                    style: TextStyle(
-                                        fontSize: 18, color: Colors.black),
-                                  ),
-                                )
-                              : _buildDistributorList(),
-                    ),
-                    _buildAddDistributorButton(),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBackground() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFFB8E994),
-            Color(0xFF6ABF69),
-            Color(0xFF3B945E),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSidebar() {
-    return Container(
-      width: 250,
-      color: const Color(0xFF3B945E),
-      child: _buildSidebarContent(),
-    );
-  }
 
   Widget _buildSidebarContent() {
     return Column(
@@ -194,15 +164,6 @@ class _ListdistribuidorScreenState extends State<ListdistribuidorScreen> {
           },
         ),
       ],
-    );
-  }
-
-  Widget _buildDrawer() {
-    return Drawer(
-      child: Container(
-        color: const Color(0xFF3B945E),
-        child: _buildSidebarContent(),
-      ),
     );
   }
 

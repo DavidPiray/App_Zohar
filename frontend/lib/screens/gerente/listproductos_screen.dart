@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../core/styles/colors.dart';
 import '../../services/product_service.dart';
+import '../../widgets/wrapper.dart';
 
 class ListProductScreen extends StatefulWidget {
   @override
@@ -188,41 +190,34 @@ class _ListProductScreenState extends State<ListProductScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Lista de Productos'),
-        backgroundColor: Color(0xFF3B945E),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          color: Colors.white,
-          onPressed: () {
-            Navigator.pop(context); // Regresa a la pantalla anterior
-          },
+Widget build(BuildContext context) {
+  return Wrapper(
+    userRole: "gerente", // 🔹 PASA EL ROL DEL USUARIO
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Card(
+        elevation: 5,
+        color: AppColors.back,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
         ),
-      ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFFB8E994),
-                  Color(0xFF6ABF69),
-                  Color(0xFF3B945E),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-          Column(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
             children: [
+              const Text(
+                "Lista de Productos",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
               Expanded(
                 child: isLoading
-                    ? Center(child: CircularProgressIndicator())
+                    ? const Center(child: CircularProgressIndicator())
                     : products.isEmpty
-                        ? Center(
+                        ? const Center(
                             child: Text(
                               'No hay productos disponibles.',
                               style:
@@ -234,23 +229,23 @@ class _ListProductScreenState extends State<ListProductScreen> {
                             itemBuilder: (context, index) {
                               final product = products[index];
                               return Card(
-                                margin: EdgeInsets.symmetric(
+                                margin: const EdgeInsets.symmetric(
                                     vertical: 8.0, horizontal: 16.0),
                                 child: ListTile(
-                                  leading: Icon(
+                                  leading: const Icon(
                                     Icons.local_drink,
                                     color: Color(0xFF3B945E),
                                   ),
                                   title: Text(
                                     product['nombre'] ?? 'Sin nombre',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                         fontWeight: FontWeight.bold,
                                         color: Colors.black87),
                                   ),
                                   subtitle: Text(
                                     'Precio: \$${product['precio_cliente']}',
                                   ),
-                                  trailing: Icon(Icons.arrow_forward_ios),
+                                  trailing: const Icon(Icons.arrow_forward_ios),
                                   onTap: () => _showEditProductModal(product),
                                 ),
                               );
@@ -262,15 +257,17 @@ class _ListProductScreenState extends State<ListProductScreen> {
                 child: ElevatedButton(
                   onPressed: _showAddProductModal,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF3B945E),
+                    backgroundColor: const Color(0xFF3B945E),
                   ),
-                  child: Text('Agregar Producto'),
+                  child: const Text('Agregar Producto'),
                 ),
               ),
             ],
           ),
-        ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 }
