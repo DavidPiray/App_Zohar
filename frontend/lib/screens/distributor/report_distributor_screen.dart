@@ -3,7 +3,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:frontend/services/dashboard_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'ventas_card.dart';
+import '../../core/styles/colors.dart';
+import '../../widgets/wrapper.dart';
+import '../reports/ventas_card.dart';
 
 class DistributorDashboard extends StatefulWidget {
   const DistributorDashboard({super.key});
@@ -24,6 +26,58 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
   void initState() {
     super.initState();
     _loadDistributorID();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrapper(
+      userRole: "distribuidor", // 🔹 PASA EL ROL DEL USUARIO
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Card(
+          elevation: 5,
+          color: AppColors.back,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "📊 Dashboard del Distribuidor",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _buildFilters(), // 🔹 Filtros
+                const SizedBox(height: 10),
+                _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _data == null
+                        ? const Center(child: Text("No hay datos disponibles"))
+                        : Expanded(
+                            child: ListView(
+                              children: [
+                                _buildSummaryCard("📈 Ventas Totales",
+                                    _data?['ventasTotales'] ?? 0),
+                                _buildSummaryCard("💰 Ingresos Totales",
+                                    "\$${_data?['ingresosTotales'] ?? 0}"),
+                                const SizedBox(height: 20),
+                                // 🔹 Gráfico de Ventas
+                                SalesChart(data: _data),
+                              ],
+                            ),
+                          ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   // 🔹 Cargar distribuidorID desde SharedPreferences
@@ -133,44 +187,6 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
             },
           ),
         ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('📊 Dashboard del Distribuidor')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildFilters(), // 🔹 Filtros
-
-            const SizedBox(height: 10),
-
-            _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _data == null
-                    ? const Center(child: Text("No hay datos disponibles"))
-                    : Expanded(
-                        child: ListView(
-                          children: [
-                            _buildSummaryCard("📈 Ventas Totales",
-                                _data?['ventasTotales'] ?? 0),
-                            _buildSummaryCard("💰 Ingresos Totales",
-                                "\$${_data?['ingresosTotales'] ?? 0}"),
-
-                            const SizedBox(height: 20),
-
-                            // 🔹 Gráfico de Ventas
-                            SalesChart(data: _data),
-                          ],
-                        ),
-                      ),
-          ],
-        ),
       ),
     );
   }

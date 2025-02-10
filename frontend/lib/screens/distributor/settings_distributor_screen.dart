@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/styles/colors.dart';
+import '../../widgets/wrapper.dart';
+
 class DistributorSettingsScreen extends StatefulWidget {
   const DistributorSettingsScreen({super.key});
 
@@ -15,11 +18,70 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
   TimeOfDay _closingTime = const TimeOfDay(hour: 20, minute: 0);
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String distribuidorID = "";
-  
+
   @override
   void initState() {
     super.initState();
     _loadDistributorID();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrapper(
+      userRole: "distribuidor", // 🔹 PASA EL ROL DEL USUARIO
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Card(
+          elevation: 5,
+          color: AppColors.back,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "⚙ Configuración del Distribuidor",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  '⏰ Horario del Distribuidor',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Apertura: ${_openingTime.format(context)}'),
+                    ElevatedButton(
+                      onPressed: () => _pickTime(true),
+                      child: const Text('Seleccionar'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Cierre: ${_closingTime.format(context)}'),
+                    ElevatedButton(
+                      onPressed: () => _pickTime(false),
+                      child: const Text('Seleccionar'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   /// 🔹 Cargar el ID del distribuidor desde SharedPreferences
@@ -94,44 +156,5 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
         .collection('configuracion_distribuidores')
         .doc(distribuidorID)
         .update({'lastUpdated': FieldValue.serverTimestamp()});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('⚙ Configuración del Distribuidor')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('⏰ Horario del Distribuidor',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Apertura: ${_openingTime.format(context)}'),
-                ElevatedButton(
-                  onPressed: () => _pickTime(true),
-                  child: const Text('Seleccionar'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Cierre: ${_closingTime.format(context)}'),
-                ElevatedButton(
-                  onPressed: () => _pickTime(false),
-                  child: const Text('Seleccionar'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

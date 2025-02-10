@@ -7,12 +7,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../core/styles/colors.dart';
 import '../../services/distributor_service.dart';
 import '../../services/orders_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/realtime_service.dart';
 import '../../services/location_service.dart';
 import '../../widgets/animated_alert.dart';
+import '../../widgets/wrapper.dart';
 
 class DistributorScreen extends StatefulWidget {
   const DistributorScreen({super.key});
@@ -210,7 +212,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
     Navigator.pushNamed(context, '/inventario-distribuidor');
   }
 
-
   void _goToProfile() {
     Navigator.pushNamed(context, '/perfil-distribuidor');
   }
@@ -337,52 +338,47 @@ class _DistributorScreenState extends State<DistributorScreen> {
     }
   }
 
-  // Página Principal
   @override
   Widget build(BuildContext context) {
     final bool isWideScreen = MediaQuery.of(context).size.width > 600;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Distribuidor'),
-        leading: Builder(
-          builder: (BuildContext context) {
-            return IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                if (!isWideScreen) {
-                  Scaffold.of(context).openDrawer();
-                } else {
-                  _toggleSidebar();
-                }
-              },
-            );
-          },
-        ),
-      ),
-      drawer: !isWideScreen
-          ? Drawer(
-              child: Container(
-                color: const Color(0xFF3B945E),
-                child: _buildSidebarContent(),
-              ),
-            )
-          : null,
-      body: Row(
+    return Wrapper(
+      userRole: "distribuidor", // 🔹 PASA EL ROL DEL USUARIO
+      child: Row(
         children: [
-          if (isWideScreen && isSidebarVisible) _buildSidebar(),
-          Expanded(child: _buildOrdersList()),
+          // Contenido principal
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                elevation: 5,
+                color: AppColors.back,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Pedidos Asignados",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: _buildOrdersList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
-    );
-  }
-
-  // Constructor de la barra lateral
-  Widget _buildSidebar() {
-    return Container(
-      width: 250,
-      color: const Color(0xFF3B945E),
-      child: _buildSidebarContent(),
     );
   }
 
@@ -421,7 +417,8 @@ class _DistributorScreenState extends State<DistributorScreen> {
         ),
         ListTile(
           leading: const Icon(Icons.settings, color: Colors.white),
-          title: const Text('Configuraciones', style: TextStyle(color: Colors.white)),
+          title: const Text('Configuraciones',
+              style: TextStyle(color: Colors.white)),
           onTap: () => _goConfig,
         ),
         ListTile(
@@ -654,7 +651,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
               ],
             ),
           ),
-
           const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.calendar_today, color: Colors.blue),

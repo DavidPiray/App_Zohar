@@ -3,8 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../core/styles/colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/distributor_service.dart';
+import '../../widgets/wrapper.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({Key? key}) : super(key: key);
@@ -46,6 +48,63 @@ class _InventoryScreenState extends State<InventoryScreen> {
     super.dispose();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    final bool isWideScreen = MediaQuery.of(context).size.width > 600;
+
+    return Wrapper(
+      userRole: "distribuidor", // 🔹 PASA EL ROL DEL USUARIO
+      child: Row(
+        children: [
+          // Contenido principal
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                elevation: 5,
+                color: AppColors.back,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Inventario",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(isAscending
+                                ? Icons.arrow_upward
+                                : Icons.arrow_downward),
+                            onPressed: _toggleSortOrder,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      _buildTimeline(),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: _buildInventoryList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
@@ -73,18 +132,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
       double elapsedMinutes = now.difference(startTime).inMinutes.toDouble();
       setState(() => _progress = elapsedMinutes / totalMinutes);
     }
-  }
-
-  void _logout(BuildContext context) async {
-    await authService.logout();
-    // ignore: use_build_context_synchronously
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
-  void _toggleSidebar() {
-    setState(() {
-      isSidebarVisible = !isSidebarVisible;
-    });
   }
 
   void _toggleSortOrder() {
@@ -171,40 +218,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final bool isWideScreen = MediaQuery.of(context).size.width > 600;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Inventario'),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: _toggleSidebar,
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(isAscending ? Icons.arrow_upward : Icons.arrow_downward),
-            onPressed: _toggleSortOrder,
-          ),
-        ],
-      ),
-      body: Row(
-        children: [
-          if (isWideScreen && isSidebarVisible) _buildSidebar(),
-          Expanded(
-            child: Column(
-              children: [
-                _buildTimeline(),
-                Expanded(child: _buildInventoryList()),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTimeline() {
     if (_openTime == null || _closeTime == null) {
       return const Center(child: CircularProgressIndicator());
@@ -245,34 +258,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSidebar() {
-    return Container(
-      width: 250,
-      color: const Color(0xFF3B945E),
-      child: _buildSidebarContent(),
-    );
-  }
-
-  Widget _buildSidebarContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ListTile(
-          leading: const Icon(Icons.home, color: Colors.white),
-          title: const Text('Inicio', style: TextStyle(color: Colors.white)),
-          onTap: () {
-            Navigator.pushReplacementNamed(context, '/distributor');
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.logout, color: Colors.white),
-          title: const Text('Salir', style: TextStyle(color: Colors.white)),
-          onTap: () => _logout(context),
-        ),
-      ],
     );
   }
 
@@ -349,6 +334,3 @@ class RestockForm extends StatelessWidget {
     );
   }
 }
-
-
-

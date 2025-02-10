@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/styles/colors.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/wrapper.dart';
 
 class DirectorScreen extends StatefulWidget {
   @override
@@ -12,7 +14,6 @@ class DirectorScreen extends StatefulWidget {
 class _DirectorScreenState extends State<DirectorScreen> {
   final AuthService apiService = AuthService();
   bool isSidebarVisible = true;
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   StreamSubscription<DocumentSnapshot>? _firestoreSubscription;
 
   TimeOfDay? _openTime;
@@ -28,7 +29,45 @@ class _DirectorScreenState extends State<DirectorScreen> {
     _startTimer();
   }
 
-  /// 🔹 Escuchar cambios en Firestore en tiempo real
+  @override
+  Widget build(BuildContext context) {
+    final bool isWideScreen = MediaQuery.of(context).size.width > 800;
+
+    return Wrapper(
+      userRole: "gerente", // 🔹 PASA EL ROL DEL USUARIO
+      child: Row(
+        children: [
+          Expanded(
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Card(
+                    elevation: 5,
+                    color: AppColors.back,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          _buildHeader(),
+                          _buildProgressIndicator(), // Widget agregado aquí
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Escuchar cambios en Firestore en tiempo real
   void _listenForSettingsChanges() {
     _firestoreSubscription = FirebaseFirestore.instance
         .collection('configuracion')
@@ -95,73 +134,10 @@ class _DirectorScreenState extends State<DirectorScreen> {
     }
   }
 
-  void _logout(BuildContext context) async {
-    await apiService.logout();
-    // ignore: use_build_context_synchronously
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
-  void _toggleSidebar() {
-    setState(() {
-      isSidebarVisible = !isSidebarVisible;
-    });
-  }
-
   @override
   void dispose() {
     _firestoreSubscription?.cancel();
     super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isWideScreen = MediaQuery.of(context).size.width > 800;
-
-    return Scaffold(
-      key: _scaffoldKey,
-      appBar: AppBar(
-        title: const Text('Gerente'),
-        backgroundColor: const Color(0xFF3B945E),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            if (!isWideScreen) {
-              _scaffoldKey.currentState?.openDrawer();
-            } else {
-              _toggleSidebar();
-            }
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _logout(context),
-          ),
-        ],
-      ),
-      drawer: !isWideScreen ? _buildDrawer() : null,
-      body: Row(
-        children: [
-          if (isWideScreen && isSidebarVisible) _buildSidebar(),
-          Expanded(
-            child: Stack(
-              children: [
-                _buildBackground(),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      _buildHeader(),
-                      _buildProgressIndicator(), // 🔹 Widget agregado aquí
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildProgressIndicator() {
@@ -219,103 +195,6 @@ class _DirectorScreenState extends State<DirectorScreen> {
                 fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSidebar() {
-    return Container(
-      width: 250,
-      color: const Color(0xFF3B945E),
-      child: _buildSidebarContent(),
-    );
-  }
-
-  Widget _buildSidebarContent() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'Menú',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        ListTile(
-          leading: const Icon(Icons.local_shipping, color: Colors.white),
-          title: const Text('Distribuidores',
-              style: TextStyle(color: Colors.white)),
-          onTap: () {
-            Navigator.pushNamed(context, '/lista-distribuidores');
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.inventory, color: Colors.white),
-          title: const Text('Productos', style: TextStyle(color: Colors.white)),
-          onTap: () {
-            Navigator.pushNamed(context, '/lista-productos');
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.document_scanner, color: Colors.white),
-          title: const Text('Reportes', style: TextStyle(color: Colors.white)),
-          onTap: () {
-            Navigator.pushNamed(context, '/reporte-gerente');
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.map, color: Colors.white),
-          title: const Text('Mapa', style: TextStyle(color: Colors.white)),
-          onTap: () {
-            Navigator.pushNamed(context, '/mapa-gerente');
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.map, color: Colors.white),
-          title: const Text('Configuraciones',
-              style: TextStyle(color: Colors.white)),
-          onTap: () {
-            Navigator.pushNamed(context, '/configuracion-gerente');
-          },
-        ),
-        const Spacer(),
-        ListTile(
-          leading: const Icon(Icons.logout, color: Colors.white),
-          title: const Text('Cerrar sesión',
-              style: TextStyle(color: Colors.white)),
-          onTap: () => _logout(context),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDrawer() {
-    return Drawer(
-      child: Container(
-        color: const Color(0xFF3B945E),
-        child: _buildSidebarContent(),
-      ),
-    );
-  }
-
-  Widget _buildBackground() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFFB8E994),
-            Color(0xFF6ABF69),
-            Color(0xFF3B945E),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
       ),
     );
   }

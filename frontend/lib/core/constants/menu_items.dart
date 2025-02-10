@@ -19,8 +19,21 @@ class MenuItems {
     ],
     'distribuidor': [
       {'title': 'Inicio', 'icon': Icons.home, 'route': '/distribuidor'},
-      {'title': 'Rutas', 'icon': Icons.map, 'route': '/rutas'},
-      {'title': 'Pedidos Asignados', 'icon': Icons.assignment, 'route': '/pedidos-distribuidor'},
+      {'title': 'Perfil', 'icon': Icons.person, 'route': '/perfil-distribuidor'},
+      {'title': 'Inventario', 'icon': Icons.water_drop, 'route': '/inventario-distribuidor'},
+      {'title': 'Reportes', 'icon': Icons.description, 'route': '/reporte-distribuidor'},
+      {'title': 'Configuraciones', 'icon': Icons.settings, 'route': '/configuracion-distribuidor'},
+      {'title': 'Salir', 'icon': Icons.logout, 'route': '/logout'},
+    ],
+    'gerente': [
+      {'title': 'Menu', 'icon': Icons.home, 'route': '/gerente'},
+      {'title': 'Perfil', 'icon': Icons.person, 'route': '/perfil-gerente'},
+      {'title': 'Distribuidores', 'icon': Icons.local_shipping, 'route': '/lista-distribuidores'},
+      {'title': 'Mapa', 'icon': Icons.map, 'route': '/mapa-gerente'},
+      {'title': 'Clientes', 'icon': Icons.groups, 'route': '/lista-clientes'},
+      {'title': 'Productos', 'icon': Icons.shopping_cart, 'route': '/lista-productos'},
+      {'title': 'Reportes', 'icon': Icons.description, 'route': '/reporte-gerente'},
+      {'title': 'Configuraciones', 'icon': Icons.settings, 'route': '/configuracion-gerente'},
       {'title': 'Salir', 'icon': Icons.logout, 'route': '/logout'},
     ],
   };

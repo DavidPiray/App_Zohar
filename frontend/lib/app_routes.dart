@@ -11,18 +11,18 @@ import 'screens/client/orders_history_screen.dart';
 import 'screens/distributor/distributor_screen.dart';
 import 'screens/distributor/inventory_screen.dart';
 import 'screens/distributor/profile_screen.dart';
-import 'screens/reports/report_distributor_screen.dart';
+import 'screens/distributor/report_distributor_screen.dart';
 import 'screens/distributor/settings_distributor_screen.dart';
 // Para Gerente
-import 'screens/director/listdistribuidor_screen.dart';
-import 'screens/director/listproductos_screen.dart';
-import 'screens/director/reports_screen.dart';
-import 'screens/director/map_gerente.dart';
-import 'screens/director/settings_gerente_screen.dart';
+import 'screens/gerente/gerente_screen.dart';
+import 'screens/gerente/listdistribuidor_screen.dart';
+import 'screens/gerente/listproductos_screen.dart';
+import 'screens/gerente/reports_screen.dart';
+import 'screens/gerente/map_gerente.dart';
+import 'screens/gerente/settings_gerente_screen.dart';
 // Extras
 import 'screens/utils/map_screen.dart';
 import 'screens/home/main_screen.dart';
-import 'screens/home/director_screen.dart';
 import 'views/home/new.dart';
 
 class AppRoutes {
@@ -41,7 +41,7 @@ class AppRoutes {
     '/inventario-distribuidor': (context) => const InventoryScreen(),
     '/perfil-distribuidor': (context) => const ProfileDistributorScreen(),
     '/reporte-distribuidor': (context) => const DistributorDashboard(),
-    '/configuracion-distribuidores': (context) => const DistributorSettingsScreen(),
+    '/configuracion-distribuidor': (context) => const DistributorSettingsScreen(),
 
     // Gerente
     '/gerente': (context) => DirectorScreen(),
