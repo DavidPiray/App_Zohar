@@ -65,20 +65,21 @@ const Order = {
   },
 
   // Obtener reporte de ventas
-  async getSalesReport(mes, distribuidorID) {
-    const doc = await db.collection('ventas_mensuales').doc(`${mes}-${distribuidorID}`).get();
+  async getSalesReport(dia, distribuidorID) {
+    const doc = await db.collection('ventas_mensuales').doc(`${dia}-${distribuidorID}`).get();
     return doc.exists ? doc.data() : null;
   },
 
   // Actualizar el reporte de ventas
   async updateSalesReport(distribuidorID, total, productos) {
-    const mes = new Date().toISOString().slice(0, 7);
-    const docRef = db.collection('ventas_mensuales').doc(`${mes}-${distribuidorID}`);
+    const fecha = new Date();
+    const dia = fecha.toISOString().slice(0, 10); // Obtiene el formato YYYY-MM-DD
+    const docRef = db.collection('ventas_mensuales').doc(`${dia}-${distribuidorID}`);
 
     const doc = await docRef.get();
     if (!doc.exists) {
       await docRef.set({
-        mes,
+        fecha: dia,
         distribuidorID,
         ventasTotales: 1,
         ingresosTotales: total,
@@ -94,12 +95,12 @@ const Order = {
 
   // Actualizar los productos mas vendidos
   async updateTopProducts(productos) {
-    const mes = new Date().toISOString().slice(0, 7);
-    const docRef = db.collection('venta_productos').doc(mes);
+    const dia = fecha.toISOString().slice(0, 10); // Obtiene el formato YYYY-MM-DD
+    const docRef = db.collection('venta_productos').doc(dia);
 
     const doc = await docRef.get();
     if (!doc.exists) {
-      await docRef.set({ mes, topProductos: productos });
+      await docRef.set({ dia, topProductos: productos });
     } else {
       await docRef.update({
         topProductos: [...doc.data().topProductos, ...productos],

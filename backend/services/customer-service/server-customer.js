@@ -10,7 +10,6 @@ const app = express();
 // Permitir solicitudes desde cualquier origen
 app.use(cors());
 app.use(bodyParser.json());
-app.use(authMiddleware); // Protege todos los endpoints por defecto
 app.use('/clientes', routes); // Ruta inicial del endpoint
 
 const PORT = process.env.CUSTOMER_SERVICE_PORT || 3002;

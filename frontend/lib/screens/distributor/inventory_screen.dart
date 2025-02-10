@@ -1,7 +1,12 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../core/styles/colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/distributor_service.dart';
+import '../../widgets/wrapper.dart';
 
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({Key? key}) : super(key: key);
@@ -14,37 +19,169 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final AuthService authService = AuthService();
   final DistributorService distributorService = DistributorService();
 
-  late Future<List<dynamic>> _inventory; // Inventario del distribuidor
+  late Future<List<dynamic>> _inventory;
   bool isSidebarVisible = true;
+  bool isAscending = true;
+  late Timer _timer;
+  DateTime _currentTime = DateTime.now();
+  TimeOfDay? _openTime;
+  TimeOfDay? _closeTime;
+  double _progress = 0.0;
 
   @override
   void initState() {
     super.initState();
     _inventory = distributorService.getDistributorInventory("dist1");
-  }
-
-  void _logout(BuildContext context) async {
-    await authService.logout();
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
-  void _toggleSidebar() {
-    setState(() {
-      isSidebarVisible = !isSidebarVisible;
+    _startTimer();
+    _listenToConfigChanges(); // 🔹 ESCUCHA CAMBIOS EN TIEMPO REAL
+    // 🔹 Actualiza la hora en tiempo real cada segundo
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
+      setState(() {
+        _currentTime = DateTime.now();
+      });
     });
   }
 
-  void _showRestockForm(BuildContext context) async {
-    final inventory = await _inventory;
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isWideScreen = MediaQuery.of(context).size.width > 600;
+
+    return Wrapper(
+      userRole: "distribuidor", // 🔹 PASA EL ROL DEL USUARIO
+      child: Row(
+        children: [
+          // Contenido principal
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                elevation: 5,
+                color: AppColors.back,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Inventario",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(isAscending
+                                ? Icons.arrow_upward
+                                : Icons.arrow_downward),
+                            onPressed: _toggleSortOrder,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      _buildTimeline(),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: _buildInventoryList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _currentTime = DateTime.now();
+        _updateProgress();
+      });
+    });
+  }
+
+  void _updateProgress() {
+    if (_openTime == null || _closeTime == null) return;
+
+    DateTime now = DateTime.now();
+    DateTime startTime = DateTime(
+        now.year, now.month, now.day, _openTime!.hour, _openTime!.minute);
+    DateTime endTime = DateTime(
+        now.year, now.month, now.day, _closeTime!.hour, _closeTime!.minute);
+
+    if (now.isBefore(startTime)) {
+      setState(() => _progress = 0.0);
+    } else if (now.isAfter(endTime)) {
+      setState(() => _progress = 1.0);
+    } else {
+      double totalMinutes = endTime.difference(startTime).inMinutes.toDouble();
+      double elapsedMinutes = now.difference(startTime).inMinutes.toDouble();
+      setState(() => _progress = elapsedMinutes / totalMinutes);
+    }
+  }
+
+  void _toggleSortOrder() {
+    setState(() {
+      isAscending = !isAscending;
+      _inventory = distributorService
+          .getDistributorInventory("dist1")
+          .then((list) => list
+            ..sort((a, b) {
+              return isAscending
+                  ? a['stock'].compareTo(b['stock'])
+                  : b['stock'].compareTo(a['stock']);
+            }));
+    });
+  }
+
+  void _listenToConfigChanges() {
+    FirebaseFirestore.instance
+        .collection('configuracion_distribuidores')
+        .doc('horarios')
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        setState(() {
+          _openTime = _parseFirestoreTime(snapshot.data()?['horaApertura']) ??
+              const TimeOfDay(hour: 8, minute: 0);
+          _closeTime = _parseFirestoreTime(snapshot.data()?['horaCierre']) ??
+              const TimeOfDay(hour: 18, minute: 0);
+          _updateProgress();
+        });
+      }
+    });
+  }
+
+  TimeOfDay? _parseFirestoreTime(String? timeString) {
+    if (timeString == null) return null;
+    final parts = timeString.split(":");
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+  }
+
+  void _showRestockForm(BuildContext context, Map<String, dynamic> product) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Recargar Botellones'),
           content: RestockForm(
-            inventory: inventory,
-            onSubmit: (productId, quantity) {
-              _restockProduct("dist1", productId, quantity);
+            product: product,
+            onSubmit: (quantity) {
+              _restockProduct("dist1", product['id_producto'], quantity);
             },
           ),
         );
@@ -55,6 +192,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Future<void> _restockProduct(
       String distributorId, String productId, int quantity) async {
     try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('Error: Usuario no autenticado');
+        return;
+      }
       final ref = FirebaseFirestore.instance.collection('recargas');
       await ref.add({
         'distribuidorId': distributorId,
@@ -76,88 +218,46 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final bool isWideScreen = MediaQuery.of(context).size.width > 600;
+  Widget _buildTimeline() {
+    if (_openTime == null || _closeTime == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Inventario'),
-        leading: Builder(
-          builder: (BuildContext context) {
-            return IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                if (!isWideScreen) {
-                  Scaffold.of(context).openDrawer();
-                } else {
-                  _toggleSidebar();
-                }
-              },
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => _showRestockForm(context),
-            child: const Text('Recargar Botellones',
-                style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-      drawer: !isWideScreen
-          ? Drawer(
-              child: Container(
-                color: const Color(0xFF3B945E),
-                child: _buildSidebarContent(),
-              ),
-            )
-          : null,
-      body: Row(
+    DateTime now = DateTime.now();
+    DateTime openDateTime = DateTime(
+        now.year, now.month, now.day, _openTime!.hour, _openTime!.minute);
+    DateTime closeDateTime = DateTime(
+        now.year, now.month, now.day, _closeTime!.hour, _closeTime!.minute);
+
+    double progress = (now.difference(openDateTime).inMinutes /
+            closeDateTime.difference(openDateTime).inMinutes)
+        .clamp(0.0, 1.0);
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (isWideScreen && isSidebarVisible) _buildSidebar(),
-          Expanded(child: _buildInventoryList()),
+          Text(
+            "Horario: ${_openTime!.format(context)} - ${_closeTime!.format(context)}",
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 5),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.grey[300],
+            color: progress < 0.5
+                ? Colors.green
+                : (progress < 0.9 ? Colors.orange : Colors.red),
+            minHeight: 10,
+          ),
+          const SizedBox(height: 5),
+          Text(
+            "Hora actual: ${DateFormat.Hms().format(_currentTime)}",
+            style: const TextStyle(fontSize: 14),
+          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSidebar() {
-    return Container(
-      width: 250,
-      color: const Color(0xFF3B945E),
-      child: _buildSidebarContent(),
-    );
-  }
-
-  Widget _buildSidebarContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'Opciones',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        ListTile(
-          leading: const Icon(Icons.home, color: Colors.white),
-          title: const Text('Inicio', style: TextStyle(color: Colors.white)),
-          onTap: () {
-            Navigator.pushReplacementNamed(context, '/distributor');
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.logout, color: Colors.white),
-          title: const Text('Salir', style: TextStyle(color: Colors.white)),
-          onTap: () => _logout(context),
-        ),
-      ],
     );
   }
 
@@ -181,12 +281,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: ListTile(
-                  leading: CircleAvatar(
+                  leading: const CircleAvatar(
                     backgroundColor: Colors.blueAccent,
-                    child: const Icon(Icons.inventory, color: Colors.white),
+                    child: Icon(Icons.inventory, color: Colors.white),
                   ),
                   title: Text(product['nombre']),
                   subtitle: Text('Cantidad: ${product['stock']}'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.add_circle_outline,
+                        color: Colors.green),
+                    onPressed: () => _showRestockForm(context, product),
+                  ),
                 ),
               );
             },
@@ -197,87 +302,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 }
 
-class RestockForm extends StatefulWidget {
-  final List<dynamic> inventory;
-  final Function(String productId, int quantity) onSubmit;
-
-  const RestockForm({
-    Key? key,
-    required this.inventory,
-    required this.onSubmit,
-  }) : super(key: key);
-
-  @override
-  _RestockFormState createState() => _RestockFormState();
-}
-
-class _RestockFormState extends State<RestockForm> {
-  String? selectedProduct;
+class RestockForm extends StatelessWidget {
+  final Map<String, dynamic> product;
+  final Function(int quantity) onSubmit;
   final TextEditingController quantityController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.inventory.isNotEmpty) {
-      selectedProduct = widget.inventory.first['id']; // Selección por defecto
-    }
-  }
+  RestockForm({Key? key, required this.product, required this.onSubmit})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        DropdownButton<String>(
-          value: selectedProduct,
-          onChanged: (value) {
-            setState(() {
-              selectedProduct = value;
-            });
-          },
-          hint: const Text('Selecciona un producto'),
-          items: widget.inventory.map<DropdownMenuItem<String>>((product) {
-            return DropdownMenuItem<String>(
-              value: product['id'],
-              child: Text(product['nombre']),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: quantityController,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Cantidad',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 16),
+    return AlertDialog(
+      title: Text("Recargar ${product['nombre']}"),
+      content: TextField(
+        controller: quantityController,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(labelText: 'Cantidad'),
+      ),
+      actions: [
         ElevatedButton(
           onPressed: () {
-            if (selectedProduct != null && quantityController.text.isNotEmpty) {
-              try {
-                final quantity = int.parse(quantityController.text);
-                if (quantity > 0) {
-                  widget.onSubmit(selectedProduct!, quantity);
-                  Navigator.of(context).pop();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('La cantidad debe ser mayor a 0')),
-                  );
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Ingresa un número válido')),
-                );
-              }
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content:
-                        Text('Selecciona un producto y una cantidad válida')),
-              );
+            final quantity = int.tryParse(quantityController.text) ?? 0;
+            if (quantity > 0) {
+              onSubmit(quantity);
+              Navigator.of(context).pop();
             }
           },
           child: const Text('Solicitar'),

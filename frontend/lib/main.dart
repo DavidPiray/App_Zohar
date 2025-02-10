@@ -6,13 +6,14 @@ import 'providers/auth_provider.dart';
 import 'providers/report_provider.dart'; // Asegúrate de importar esto
 import 'firebase_options.dart'; // Archivo generado por FlutterFire CLI
 import 'app_routes.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
+  await dotenv.load(fileName: ".env");
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider(create: (_) => AuthProvider()),
     //ChangeNotifierProvider(create: (_) => RealtimeProvider()),

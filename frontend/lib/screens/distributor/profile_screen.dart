@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/styles/colors.dart';
 import '../../widgets/animated_alert.dart';
 import '../../services/distributor_service.dart';
+import '../../widgets/wrapper.dart';
 
 class ProfileDistributorScreen extends StatefulWidget {
   const ProfileDistributorScreen({Key? key}) : super(key: key);
@@ -31,6 +33,153 @@ class _ProfileDistributorScreenState extends State<ProfileDistributorScreen> {
   void initState() {
     super.initState();
     _distributorData = distributorService.getDistributorByEmail();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isWideScreen = MediaQuery.of(context).size.width > 600;
+
+    return Wrapper(
+      userRole: "distribuidor",
+      child: Row(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                elevation: 5,
+                color: AppColors.back,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: FutureBuilder<Map<String, dynamic>>(
+                    future: _distributorData,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return Center(
+                          child: Text('Error: ${snapshot.error}'),
+                        );
+                      } else {
+                        final data = snapshot.data!;
+                        _name ??= data['nombre'];
+                        _email ??= data['email'];
+                        _phone ??= data['celular'];
+                        _zona ??= data['zonaAsignada'];
+
+                        return SingleChildScrollView(
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                GestureDetector(
+                                  onTap: _isEditing ? _pickImage : null,
+                                  child: CircleAvatar(
+                                    radius: 60,
+                                    backgroundImage: _selectedImage != null
+                                        ? FileImage(_selectedImage!)
+                                        : const AssetImage(
+                                                'assets/images/Logo3.png')
+                                            as ImageProvider,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                TextFormField(
+                                  initialValue: _name,
+                                  enabled: _isEditing,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Nombre',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Por favor, ingresa tu nombre';
+                                    }
+                                    return null;
+                                  },
+                                  onSaved: (value) => _name = value,
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  initialValue: _email,
+                                  enabled: false,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Correo Electrónico',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  initialValue: _zona,
+                                  enabled: false,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Zona Asignada',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  initialValue: _phone,
+                                  enabled: _isEditing,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Teléfono',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Por favor, ingresa tu número de teléfono';
+                                    }
+                                    return null;
+                                  },
+                                  onSaved: (value) => _phone = value,
+                                ),
+                                const SizedBox(height: 16),
+                                if (_isEditing)
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            _isEditing = false;
+                                          });
+                                        },
+                                        child: const Text('Cancelar'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: _saveChanges,
+                                        child: const Text('Guardar Cambios'),
+                                      ),
+                                    ],
+                                  )
+                                else
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _isEditing = true;
+                                      });
+                                    },
+                                    child: const Text('Editar Perfil'),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _pickImage() async {
@@ -103,180 +252,5 @@ class _ProfileDistributorScreenState extends State<ProfileDistributorScreen> {
         );
       }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isWideScreen = MediaQuery.of(context).size.width > 600;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Center(
-          child: Text('Perfil', style: TextStyle(fontSize: 18)),
-        ),
-      ),
-      body: Row(
-        children: [
-          if (isWideScreen) ...[
-            Container(
-              width: 250,
-              color: const Color(0xFF3B945E),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Text(
-                      'Opciones',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.person, color: Colors.white),
-                    title: const Text('Perfil',
-                        style: TextStyle(color: Colors.white)),
-                    onTap: () {},
-                  ),
-                  // Agrega más opciones según sea necesario
-                ],
-              ),
-            ),
-          ],
-          Expanded(
-            child: FutureBuilder<Map<String, dynamic>>(
-              future: _distributorData,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Error: ${snapshot.error}'),
-                  );
-                } else {
-                  final data = snapshot.data!;
-                  _name ??= data['nombre'];
-                  _email ??= data['email'];
-                  _phone ??= data['celular'];
-                  _zona ??= data['zonaAsignada'];
-
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          GestureDetector(
-                            onTap: _isEditing ? _pickImage : null,
-                            child: CircleAvatar(
-                              radius: 60,
-                              backgroundImage: _selectedImage != null
-                                  ? FileImage(_selectedImage!)
-                                  : const AssetImage('assets/images/Logo3.png')
-                                      as ImageProvider,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Nombre
-                          TextFormField(
-                            initialValue: _name,
-                            enabled: _isEditing,
-                            decoration: const InputDecoration(
-                              labelText: 'Nombre',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Por favor, ingresa tu nombre';
-                              }
-                              return null;
-                            },
-                            onSaved: (value) => _name = value,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Email
-                          TextFormField(
-                            initialValue: _email,
-                            enabled: false,
-                            decoration: const InputDecoration(
-                              labelText: 'Correo Electrónico',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Zona
-                          TextFormField(
-                            initialValue: _zona,
-                            enabled: false,
-                            decoration: const InputDecoration(
-                              labelText: 'Zona Asignada',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Teléfono
-                          TextFormField(
-                            initialValue: _phone,
-                            enabled: _isEditing,
-                            decoration: const InputDecoration(
-                              labelText: 'Teléfono',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Por favor, ingresa tu número de teléfono';
-                              }
-                              return null;
-                            },
-                            onSaved: (value) => _phone = value,
-                          ),
-                          const SizedBox(height: 16),
-
-                          if (_isEditing)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _isEditing = false;
-                                    });
-                                  },
-                                  child: const Text('Cancelar'),
-                                ),
-                                ElevatedButton(
-                                  onPressed: _saveChanges,
-                                  child: const Text('Guardar Cambios'),
-                                ),
-                              ],
-                            )
-                          else
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _isEditing = true;
-                                });
-                              },
-                              child: const Text('Editar Perfil'),
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

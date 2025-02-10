@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/styles/colors.dart';
 import '../../widgets/animated_logo.dart';
 import '../../widgets/animated_title.dart';
 import '../../widgets/login_form.dart';
@@ -20,7 +21,7 @@ class LoginScreen extends StatelessWidget {
         preferredSize: const Size.fromHeight(80), // Altura personalizada
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF3B945E), // Color de fondo
+            color: AppColors.barra,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.3), // Sombrado sutil
@@ -49,15 +50,7 @@ class LoginScreen extends StatelessWidget {
           // Fondo degradado
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFFB8E994),
-                  Color(0xFF6ABF69),
-                  Color(0xFF3B945E),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+              gradient: AppColors.degradadoPrincipal
             ),
           ),
           LayoutBuilder(
