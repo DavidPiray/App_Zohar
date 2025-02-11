@@ -141,13 +141,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
     });
   }
 
-  // Desplazamiento de la barra lateral
-  void _toggleSidebar() {
-    setState(() {
-      isSidebarVisible = !isSidebarVisible;
-    });
-  }
-
 /*   void _updateOrderStatus(String orderId, String currentStatus,
       Map<String, dynamic> clientLocation) async {
     try {
@@ -195,34 +188,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
     }
   }
  */
-
-  // NAVEGADORES
-  // Lógica para cerrar sesión
-  void _logout(BuildContext context) async {
-    await authService.logout();
-    // ignore: use_build_context_synchronously
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
-  void _goToInventory() {
-    Navigator.pushNamed(context, '/inventario-distribuidor');
-  }
-
-  void _goConfig() {
-    Navigator.pushNamed(context, '/inventario-distribuidor');
-  }
-
-  void _goToProfile() {
-    Navigator.pushNamed(context, '/perfil-distribuidor');
-  }
-
-  void _goToReports() {
-    Navigator.pushNamed(
-      context,
-      '/reporte-distribuidor',
-      arguments: 'dist1',
-    );
-  }
 
   // Actualizar las ubicaciones
   Future<LatLng?> _updateLocation(String customerId, String orderId) async {
@@ -340,7 +305,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isWideScreen = MediaQuery.of(context).size.width > 600;
 
     return Wrapper(
       userRole: "distribuidor", // 🔹 PASA EL ROL DEL USUARIO
@@ -379,54 +343,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  // Contenido de la barra lateral
-  Widget _buildSidebarContent() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'Opciones',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        ListTile(
-          leading: const Icon(Icons.person, color: Colors.white),
-          title: const Text('Perfil', style: TextStyle(color: Colors.white)),
-          onTap: _goToProfile,
-        ),
-        ListTile(
-          leading: const Icon(Icons.inventory, color: Colors.white),
-          title:
-              const Text('Inventario', style: TextStyle(color: Colors.white)),
-          onTap: _goToInventory,
-        ),
-        ListTile(
-          leading: const Icon(Icons.report, color: Colors.white),
-          title: const Text('Reportes', style: TextStyle(color: Colors.white)),
-          onTap: _goToReports,
-        ),
-        ListTile(
-          leading: const Icon(Icons.settings, color: Colors.white),
-          title: const Text('Configuraciones',
-              style: TextStyle(color: Colors.white)),
-          onTap: () => _goConfig,
-        ),
-        ListTile(
-          leading: const Icon(Icons.logout, color: Colors.white),
-          title: const Text('Salir', style: TextStyle(color: Colors.white)),
-          onTap: () => _logout(context),
-        ),
-      ],
     );
   }
 
