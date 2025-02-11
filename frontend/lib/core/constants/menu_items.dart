@@ -22,7 +22,11 @@ class MenuItems {
         'route': '/historial-cliente'
       },
       {'title': 'Pedidos', 'icon': Icons.list, 'route': '/pedidos-cliente'},
-      {'title': 'Ayuda', 'icon': Icons.help, 'route': '/ayuda-cliente'},
+      {
+        'title': 'Configuraciones',
+        'icon': Icons.settings,
+        'route': '/configuracion-cliente'
+      },
       {'title': 'Salir', 'icon': Icons.logout, 'route': '/logout'},
     ],
     'distribuidor': [
@@ -47,7 +51,6 @@ class MenuItems {
         'icon': Icons.settings,
         'route': '/configuracion-distribuidor'
       },
-      {'title': 'Ayuda', 'icon': Icons.help, 'route': '/ayuda-distribuidor'},
       {'title': 'Salir', 'icon': Icons.logout, 'route': '/logout'},
     ],
     'gerente': [
@@ -75,7 +78,6 @@ class MenuItems {
         'icon': Icons.settings,
         'route': '/configuracion-gerente'
       },
-      {'title': 'Ayuda', 'icon': Icons.help, 'route': '/ayuda-gerente'},
       {'title': 'Salir', 'icon': Icons.logout, 'route': '/logout'},
     ],
   };

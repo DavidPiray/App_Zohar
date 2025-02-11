@@ -1,115 +1,33 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/styles/colors.dart';
 import '../../widgets/wrapper.dart';
 
-class ManagerSettingsScreen extends StatefulWidget {
-  const ManagerSettingsScreen({super.key});
+class ClientSettingsScreen extends StatefulWidget {
+  const ClientSettingsScreen({super.key});
 
   @override
-  _ManagerSettingsScreenState createState() => _ManagerSettingsScreenState();
+  _ClientSettingsScreenState createState() => _ClientSettingsScreenState();
 }
 
-class _ManagerSettingsScreenState extends State<ManagerSettingsScreen> {
-  TimeOfDay _openingTime = const TimeOfDay(hour: 8, minute: 0);
-  TimeOfDay _closingTime = const TimeOfDay(hour: 18, minute: 0);
-  final FlutterLocalNotificationsPlugin _notificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+class _ClientSettingsScreenState extends State<ClientSettingsScreen> {
+  TimeOfDay _openingTime = const TimeOfDay(hour: 9, minute: 0);
+  TimeOfDay _closingTime = const TimeOfDay(hour: 20, minute: 0);
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  String distribuidorID = "";
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
-    _initNotifications();
-  }
-
-  Future<void> _loadSettings() async {
-    DocumentSnapshot snapshot =
-        await _firestore.collection('configuracion').doc('horarios').get();
-
-    if (snapshot.exists) {
-      Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
-      setState(() {
-        _openingTime =
-            TimeOfDay(hour: data['openingHour'], minute: data['openingMinute']);
-        _closingTime =
-            TimeOfDay(hour: data['closingHour'], minute: data['closingMinute']);
-      });
-    }
-  }
-
-  Future<void> _saveSettings() async {
-    await _firestore.collection('configuracion').doc('horarios').set({
-      'openingHour': _openingTime.hour,
-      'openingMinute': _openingTime.minute,
-      'closingHour': _closingTime.hour,
-      'closingMinute': _closingTime.minute,
-    });
-    _notifyDirectorScreen();
-  }
-
-  Future<void> _initNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-    );
-    await _notificationsPlugin.initialize(initializationSettings);
-  }
-
-  Future<void> _pickTime(bool isOpening) async {
-    TimeOfDay? pickedTime = await showTimePicker(
-      context: context,
-      initialTime: isOpening ? _openingTime : _closingTime,
-    );
-
-    if (pickedTime != null) {
-      setState(() {
-        if (isOpening) {
-          _openingTime = pickedTime;
-        } else {
-          _closingTime = pickedTime;
-        }
-      });
-      await _saveSettings();
-      _sendNotification(isOpening);
-    }
-  }
-
-  Future<void> _sendNotification(bool isOpening) async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'channel_id',
-      'Plant Operations',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
-
-    await _notificationsPlugin.show(
-      0,
-      'Horario de Planta',
-      isOpening ? 'La planta ha abierto' : 'La planta ha cerrado',
-      platformChannelSpecifics,
-    );
-  }
-
-  Future<void> _notifyDirectorScreen() async {
-    await _firestore
-        .collection('configuracion')
-        .doc('horarios')
-        .update({'lastUpdated': FieldValue.serverTimestamp()});
+    _loadDistributorID();
   }
 
   @override
   Widget build(BuildContext context) {
     return Wrapper(
-      userRole: "gerente",
+      userRole: "cliente",
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Card(
@@ -124,9 +42,9 @@ class _ManagerSettingsScreenState extends State<ManagerSettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "⚙ Configuración del Gerente",
+                  "⚙ Configuración",
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -134,16 +52,11 @@ class _ManagerSettingsScreenState extends State<ManagerSettingsScreen> {
                 Expanded(
                   child: ListView(
                     children: [
-                      _buildExpandableItem(
-                        "Horario de la Planta",
-                        Icons.access_time,
-                        _buildTimeSettings(),
-                      ),
-                      _buildExpandableItem(
+                      /* _buildExpandableItem(
                         "Notificaciones",
                         Icons.notifications,
                         Center(child: Text("Configuración de Notificaciones")),
-                      ),
+                      ), */
                       _buildExpandableItem(
                         "Soporte",
                         Icons.support,
@@ -177,6 +90,10 @@ class _ManagerSettingsScreenState extends State<ManagerSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text(
+          '⏰ Horario del Distribuidor',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -203,35 +120,97 @@ class _ManagerSettingsScreenState extends State<ManagerSettingsScreen> {
     );
   }
 
+  Future<void> _loadDistributorID() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      distribuidorID = prefs.getString("distribuidorID") ?? "default";
+    });
+
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    if (distribuidorID.isEmpty) return;
+
+    DocumentSnapshot snapshot = await _firestore
+        .collection('configuracion_distribuidores')
+        .doc(distribuidorID)
+        .get();
+
+    if (snapshot.exists) {
+      Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+      setState(() {
+        _openingTime =
+            TimeOfDay(hour: data['openingHour'], minute: data['openingMinute']);
+        _closingTime =
+            TimeOfDay(hour: data['closingHour'], minute: data['closingMinute']);
+      });
+    }
+  }
+
+  Future<void> _pickTime(bool isOpening) async {
+    TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: isOpening ? _openingTime : _closingTime,
+    );
+
+    if (pickedTime != null) {
+      setState(() {
+        if (isOpening) {
+          _openingTime = pickedTime;
+        } else {
+          _closingTime = pickedTime;
+        }
+      });
+      _saveSettings();
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    if (distribuidorID.isEmpty) return;
+
+    await _firestore
+        .collection('configuracion_distribuidores')
+        .doc(distribuidorID)
+        .set({
+      'openingHour': _openingTime.hour,
+      'openingMinute': _openingTime.minute,
+      'closingHour': _closingTime.hour,
+      'closingMinute': _closingTime.minute,
+      'lastUpdated': FieldValue.serverTimestamp(),
+    });
+  }
+
   Widget _buildHelpContent() {
     return SizedBox(
-      height: 400, // Establece una altura fija adecuada
+      height: 400, // Ajusta la altura según necesidad
       child: ListView(
         shrinkWrap: true,
         physics: NeverScrollableScrollPhysics(), // Evita conflictos de scroll
         children: [
           _buildHelpItem(
             icon: Icons.shopping_cart,
-            title: 'Productos',
+            title: 'Perfil',
             description:
-                'Administra el catálogo de productos, agrega nuevos, actualiza precios y controla el stock disponible.\n\n'
-                '--> Para modificar un producto puede presionar cualquier producto de la lista y podrá modificarlo.\n\n'
-                '--> Para agregar un producto puede dar clic en el botón de la parte inferior llamado Agregar producto.',
+                'En este apartado podrá ver su información y modificar su contraseña.\n\n'
+                '--> Al entrar al apartado de perfil podrá ver su información.\n\n'
+                '--> Al seleccionar la opción de cambiar contraseña, podrá cambiarla.',
           ),
           _buildHelpItem(
-            icon: Icons.people,
-            title: 'Distribuidores',
+            icon: Icons.local_shipping,
+            title: 'Estado de Pedidos',
             description:
-                'Gestiona la información de los distribuidores y revisa su estado de actividad.\n\n'
-                '--> Puede seleccionar a un distribuidor y podrá ver su información, además podrá modificarlo o eliminarlo.\n\n'
-                '--> Podrá filtrar a los distribuidores con los filtros del lado izquierdo.',
+                'Consulta el estado de tus pedidos en la sección "Mis Pedidos".\n\n'
+                '--> Puedes ver el estado de cada pedido (Pendiente, Enviado, Entregado).\n\n'
+                '--> Si tienes dudas sobre un pedido, puedes contactarnos desde la sección de soporte.',
           ),
           _buildHelpItem(
-            icon: Icons.bar_chart,
-            title: 'Reportes',
+            icon: Icons.credit_card,
+            title: 'Realizar pedido',
             description:
-                'Genera informes de ventas, inventario y desempeño para tomar decisiones estratégicas.\n\n'
-                '--> Podrá filtrar los reportes con la barra de filtro en el lado izquierdo.',
+                'Podrá realizar el pedido de las botellas y su cantidad.\n\n'
+                '--> Se mostrará en la pantalla de inicio el producto en stock, podrá elegir la cantidad y ver su precio.\n\n'
+                '--> Podrá realizar el pedido en la parte inferior derecha, se abrirá la información y podrá confirmar el pedido.',
           ),
           _buildHelpItem(
             icon: Icons.info,
