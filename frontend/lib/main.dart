@@ -17,7 +17,7 @@ void main() async {
   runApp(MultiProvider(providers: [
     ChangeNotifierProvider(create: (_) => AuthProvider()),
     //ChangeNotifierProvider(create: (_) => RealtimeProvider()),
-    ChangeNotifierProvider(create: (_) => ReportProvider()), 
+    ChangeNotifierProvider(create: (_) => ReportProvider()),
   ], child: const MyApp()));
 }
 
@@ -30,19 +30,25 @@ class MyApp extends StatelessWidget {
       designSize: const Size(720, 1280), // Tamaño base de diseño
       minTextAdapt: true, // Adaptación de texto
       splitScreenMode: true, // Modo para pantalla dividida
-      builder: (context, child) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'Zohar',
-          theme: ThemeData(primarySwatch: Colors.blue),
-          initialRoute: '/main',
-          routes: AppRoutes.routes,
-          builder: (context, widget) {
-            // Habilitar ScreenUtil para el texto
-            ScreenUtil.init(context);
-            return widget!;
-          },
-        );
+      builder: (_, child) {
+        return LayoutBuilder(builder: (context, constraints) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Zohar',
+            theme: ThemeData(primarySwatch: Colors.blue),
+            initialRoute: '/main',
+            routes: AppRoutes.routes,
+            builder: (context, widget) {
+              // Habilitar ScreenUtil para el texto
+              ScreenUtil.init(context);
+              return MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: const TextScaler.linear(1.0)),
+                child: widget!,
+              );
+            },
+          );
+        });
       },
     );
   }

@@ -1,43 +1,44 @@
 import 'package:flutter/material.dart';
 
+import '../../core/styles/colors.dart';
+import '../../widgets/wrapper.dart';
+
 class AyudaGerenteScreen extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Ayuda para Administradores'),
-        backgroundColor: Color(0xFF3B945E),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+Widget build(BuildContext context) {
+  return Wrapper(
+    userRole: "gerente", // 🔹 PASA EL ROL DEL USUARIO
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Card(
+        elevation: 5,
+        color: AppColors.back,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
         ),
-      ),
-      body: Stack(
-        children: [
-          _buildBackground(),
-          Center(
-            child: _buildHelpContent(context),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              const Text(
+                "Ayuda para Gerente",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: _buildHelpContent(context),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBackground() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFFB8E994),
-            Color(0xFF6ABF69),
-            Color(0xFF3B945E),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildHelpContent(BuildContext context) {
     return Container(
@@ -110,7 +111,6 @@ class AyudaGerenteScreen extends StatelessWidget {
             ),
           ),
           SizedBox(height: 10),
-          Center(child: _buildHomeButton(context)),
         ],
       ),
     );
@@ -152,18 +152,5 @@ class AyudaGerenteScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHomeButton(BuildContext context) {
-    return ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.redAccent,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      icon: Icon(Icons.home),
-      label: Text('Regresar a Inicio'),
-      onPressed: () {
-        Navigator.pushReplacementNamed(context, '/director');
-      },
-    );
-  }
+ 
 }

@@ -1,5 +1,5 @@
 class ApiEndpoints {
-  static const String baseUrl = 'http://localhost:';
+  static const String baseUrl = 'http://172.21.221.29:';
 
   // Endpoints específicos
   static const String securityService = '$baseUrl 3001/auth';
