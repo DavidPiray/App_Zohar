@@ -32,15 +32,41 @@ class RealtimeService {
   }
 
   // Guardar ubicación del distribuidor cuando el pedido está en progreso
-  Future<void> saveDistributorLocation(String orderId, double lat, double lng) async {
+  Future<void> saveDistributorLocation(
+      String orderId, double lat, double lng) async {
     await _database.ref('ubicaciones/$orderId').set({
       'latitude': lat,
       'longitude': lng,
     });
   }
 
+  // Guardar ubicación del distribuidor
+  Future<void> saveDistributorPosition(
+      String distribuidorID, double lat, double lng) async {
+    await _database.ref('distribuidores/$distribuidorID').set({
+      'latitude': lat,
+      'longitude': lng,
+    });
+  }
+
+  // Eliminar la ubicación del distribuidor
+  Future<void> removeDistributorPosition(String distribuidorID) async {
+    await _database.ref('distribuidores/$distribuidorID').remove();
+  }
+
+  // Actualizar la ubicación del distribuidor en Firebase Realtime Database
+  Future<void> updateDistributorPosition(
+      String distribuidorID, double lat, double lng) async {
+    await _database.ref('distribuidores/$distribuidorID').update({
+      'latitude': lat,
+      'longitude': lng,
+    });
+    print("📍 Ubicación actualizada en Firebase: lat=$lat, lng=$lng");
+  }
+
   // Actualizar ubicación en tiempo real
-  Future<void> updateDistributorLocation(String orderId, double lat, double lng) async {
+  Future<void> updateDistributorLocation(
+      String orderId, double lat, double lng) async {
     await _database.ref('ubicaciones/$orderId').update({
       'latitude': lat,
       'longitude': lng,

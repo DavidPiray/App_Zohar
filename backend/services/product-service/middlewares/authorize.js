@@ -1,3 +1,4 @@
+//deniega el acceso
 const authorize = (allowedRoles) => (req, res, next) => {
     try {
       // Verificar si el rol del usuario está en el token JWT (ya decodificado por `authMiddleware`)

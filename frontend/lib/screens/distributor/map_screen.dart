@@ -23,6 +23,7 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _distributorLocation;
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
 
+//Cosntructor de incio de pagina
   @override
   void initState() {
     super.initState();
@@ -32,34 +33,12 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return; // Evitar llamar setState() después de dispose()
       setState(() {
         print(
-            "📌 Actualizando posición: ${position.latitude}, ${position.longitude}");
+            " Actualizando posición: ${position.latitude}, ${position.longitude}");
       });
     });
   }
 
-  @override
-  void dispose() {
-    positionStream?.cancel(); // 🔹 Cancelar la escucha al cerrar la pantalla
-    super.dispose();
-  }
-
-  void _listenToDistributorLocation() {
-    _database.child('ubicaciones/${widget.orderId}').onValue.listen((event) {
-      final data = event.snapshot.value;
-      if (data != null && data is Map) {
-        setState(() {
-          _distributorLocation = LatLng(data['latitude'], data['longitude']);
-        });
-
-        if (_mapController != null) {
-          _mapController!.animateCamera(
-            CameraUpdate.newLatLng(_distributorLocation!),
-          );
-        }
-      }
-    });
-  }
-
+//Cosntructor de incio de página
   @override
   Widget build(BuildContext context) {
     Set<Marker> markers = {
@@ -75,7 +54,6 @@ class _MapScreenState extends State<MapScreen> {
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
         ),
     };
-
     return Scaffold(
       appBar: AppBar(title: const Text("Mapa en Tiempo Real")),
       body: GoogleMap(
@@ -95,6 +73,31 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  @override
+  void dispose() {
+    positionStream?.cancel(); // 🔹 Cancelar la escucha al cerrar la pantalla
+    super.dispose();
+  }
+
+//Localización del distribuidor
+  void _listenToDistributorLocation() {
+    _database.child('ubicaciones/${widget.orderId}').onValue.listen((event) {
+      final data = event.snapshot.value;
+      if (data != null && data is Map) {
+        setState(() {
+          _distributorLocation = LatLng(data['latitude'], data['longitude']);
+        });
+
+        if (_mapController != null) {
+          _mapController!.animateCamera(
+            CameraUpdate.newLatLng(_distributorLocation!),
+          );
+        }
+      }
+    });
+  }
+
+//Navegación en el mapa
   Future<void> _openGoogleMapsNavigation() async {
     if (_distributorLocation == null) return;
 

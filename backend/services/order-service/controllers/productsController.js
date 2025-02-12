@@ -1,5 +1,6 @@
 const ProductsModel = require('../models/productsModel');
 
+//reportes producto vendidos por día
 const ProductsController = {
   async getTopProductsByDay(req, res) {
     try {
@@ -11,6 +12,7 @@ const ProductsController = {
     }
   },
 
+  //productos vendidos por semana
   async getTopProductsByWeek(req, res) {
     try {
       const { year, week } = req.params;
@@ -24,6 +26,7 @@ const ProductsController = {
     }
   },
 
+  //Porducto vendido por mes
   async getTopProductsByMonth(req, res) {
     try {
       const { year, month } = req.params;
@@ -34,6 +37,7 @@ const ProductsController = {
     }
   },
 
+  //Producto vendido por año
   async getTopProductsByYear(req, res) {
     try {
       const { year } = req.params;

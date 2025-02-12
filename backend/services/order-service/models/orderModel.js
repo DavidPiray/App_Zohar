@@ -95,6 +95,7 @@ const Order = {
 
   // Actualizar los productos mas vendidos
   async updateTopProducts(productos) {
+    const fecha = new Date();  // ✅ Definimos `fecha` antes de usarla
     const dia = fecha.toISOString().slice(0, 10); // Obtiene el formato YYYY-MM-DD
     const docRef = db.collection('venta_productos').doc(dia);
 

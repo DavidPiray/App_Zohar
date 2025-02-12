@@ -1,3 +1,4 @@
+//deniega acceso a ciertas rutas
 const authorize = (allowedRoles) => (req, res, next) => {
     try {
       // Verificar si el rol del usuario está en el token JWT

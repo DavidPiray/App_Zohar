@@ -16,10 +16,13 @@ class OrdersClientScreen extends StatefulWidget {
   _OrdersClientScreenState createState() => _OrdersClientScreenState();
 }
 
+//variables de servicios
 class _OrdersClientScreenState extends State<OrdersClientScreen> {
   final OrdersService ordersService = OrdersService();
   final ClientService clientService = ClientService();
   final RealtimeService realtimeService = RealtimeService();
+
+  //variables globales
   late Stream<DatabaseEvent> _realtimeStream;
   late Future<List<dynamic>> _orders = Future.value([]);
   late String _clientID = '';
@@ -29,7 +32,7 @@ class _OrdersClientScreenState extends State<OrdersClientScreen> {
   DateTime? selectedDate;
 
   void _initializeData() async {
-    await _getClient(); // 🔹 Asegura que el cliente se cargue antes de continuar
+    await _getClient(); // Asegura que el cliente se cargue antes de continuar
     if (_clientID.isNotEmpty) {
       _fetchOrders();
       _listenToRealtimeUpdates();
@@ -40,10 +43,11 @@ class _OrdersClientScreenState extends State<OrdersClientScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? clienteID = prefs.getString('clienteID');
     setState(() {
-      _clientID = clienteID ?? ''; // 🔹 Evita errores si es null
+      _clientID = clienteID ?? ''; // Evita errores si es null
     });
   }
 
+// Constructor -> Inicio de página
   @override
   void initState() {
     super.initState();
@@ -51,70 +55,7 @@ class _OrdersClientScreenState extends State<OrdersClientScreen> {
     _initializeData();
   }
 
-  // Colores para el estado
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pendiente':
-        return Colors.amber;
-      case 'en progreso':
-        return Colors.blue;
-      case 'cancelado':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  // Obtener los pedidos del cliente
-  void _fetchOrders() {
-    setState(() {
-      _orders = ordersService.getAllOrders(_clientID);
-    });
-  }
-
-  // Escuchar la actualización del estado en tiempo real
-  void _listenToRealtimeUpdates() {
-    _realtimeStream = realtimeService.listenToOrders();
-    _realtimeStream.listen((event) {
-      final data = event.snapshot.value;
-      if (data != null) {
-        _fetchOrders();
-      }
-    });
-  }
-
-  // Filtrado y ordenado para los pedidos
-  List<dynamic> _filterAndSortOrders(List<dynamic> orders) {
-    orders = orders.where((order) => order['estado'] != 'completado').toList();
-    if (selectedStatus != 'todos') {
-      orders =
-          orders.where((order) => order['estado'] == selectedStatus).toList();
-    }
-    if (selectedDate != null) {
-      final formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate!);
-      orders = orders.where((order) {
-        final rawTimestamp = order['fechaCreacion'];
-        if (rawTimestamp == null) return false;
-        final DateTime orderDate = DateTime.fromMillisecondsSinceEpoch(
-            rawTimestamp['_seconds'] * 1000);
-        return DateFormat('yyyy-MM-dd').format(orderDate) == formattedDate;
-      }).toList();
-    }
-    orders.sort((a, b) {
-      if (a['estado'] == 'en progreso' && b['estado'] != 'en progreso') {
-        return -1;
-      } else if (a['estado'] != 'en progreso' && b['estado'] == 'en progreso') {
-        return 1;
-      }
-      final DateTime fechaA = DateTime.fromMillisecondsSinceEpoch(
-          a['fechaCreacion']['_seconds'] * 1000);
-      final DateTime fechaB = DateTime.fromMillisecondsSinceEpoch(
-          b['fechaCreacion']['_seconds'] * 1000);
-      return fechaB.compareTo(fechaA);
-    });
-    return orders;
-  }
-
+  // Constructor de la Página Inicial
   @override
   Widget build(BuildContext context) {
     //final bool isWideScreen = MediaQuery.of(context).size.width > 600;
@@ -233,6 +174,70 @@ class _OrdersClientScreenState extends State<OrdersClientScreen> {
         ],
       ),
     );
+  }
+
+  // Colores para el estado
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pendiente':
+        return Colors.amber;
+      case 'en progreso':
+        return Colors.blue;
+      case 'cancelado':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // Obtener los pedidos del cliente
+  void _fetchOrders() {
+    setState(() {
+      _orders = ordersService.getAllOrders(_clientID);
+    });
+  }
+
+  // Escuchar la actualización del estado en tiempo real
+  void _listenToRealtimeUpdates() {
+    _realtimeStream = realtimeService.listenToOrders();
+    _realtimeStream.listen((event) {
+      final data = event.snapshot.value;
+      if (data != null) {
+        _fetchOrders();
+      }
+    });
+  }
+
+  // Filtrado y ordenado para los pedidos
+  List<dynamic> _filterAndSortOrders(List<dynamic> orders) {
+    orders = orders.where((order) => order['estado'] != 'completado').toList();
+    if (selectedStatus != 'todos') {
+      orders =
+          orders.where((order) => order['estado'] == selectedStatus).toList();
+    }
+    if (selectedDate != null) {
+      final formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate!);
+      orders = orders.where((order) {
+        final rawTimestamp = order['fechaCreacion'];
+        if (rawTimestamp == null) return false;
+        final DateTime orderDate = DateTime.fromMillisecondsSinceEpoch(
+            rawTimestamp['_seconds'] * 1000);
+        return DateFormat('yyyy-MM-dd').format(orderDate) == formattedDate;
+      }).toList();
+    }
+    orders.sort((a, b) {
+      if (a['estado'] == 'en progreso' && b['estado'] != 'en progreso') {
+        return -1;
+      } else if (a['estado'] != 'en progreso' && b['estado'] == 'en progreso') {
+        return 1;
+      }
+      final DateTime fechaA = DateTime.fromMillisecondsSinceEpoch(
+          a['fechaCreacion']['_seconds'] * 1000);
+      final DateTime fechaB = DateTime.fromMillisecondsSinceEpoch(
+          b['fechaCreacion']['_seconds'] * 1000);
+      return fechaB.compareTo(fechaA);
+    });
+    return orders;
   }
 
   // Construcción de filtros

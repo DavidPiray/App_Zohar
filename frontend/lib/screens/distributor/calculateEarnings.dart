@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-Future<Map<String, double>> calculateEarnings(String distributorId, DateTime startDate, DateTime endDate) async {
+Future<Map<String, double>> calculateEarnings(
+    String distributorId, DateTime startDate, DateTime endDate) async {
   Map<String, double> dailyEarnings = {};
 
   // 1. Consulta los pedidos completados en el rango de fechas

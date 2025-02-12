@@ -1,5 +1,6 @@
 const Joi = require('joi');
 
+//validación de crear zona
 const createZoneSchema = Joi.object({
   id_zona: Joi.string().required(),
   descripcion: Joi.string().required(),
@@ -12,6 +13,7 @@ const createZoneSchema = Joi.object({
   }).required(), // El objeto límites es obligatorio
 });
 
+//validación de actualizar zona
 const updateZoneSchema = Joi.object({
   descripcion: Joi.string().optional(),
   distribuidor: Joi.string().optional(),

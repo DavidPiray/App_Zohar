@@ -62,7 +62,7 @@ class OrdersService {
         .format(date); // Cambia el formato según tu preferencia
   }
 
-  // 🔹 Obtener pedidos filtrados por día, semana, mes o año
+  // Obtener pedidos filtrados por día, semana, mes o año
   Future<List<dynamic>> getOrdersByFilter(String filter, DateTime date) async {
     final year = date.year;
     final month = date.month.toString().padLeft(2, '0');
@@ -94,7 +94,8 @@ class OrdersService {
 
   // Listener
   // Método para actualizar estado del pedido
-  Future<void> updateOrderStatus(String orderId, String status) async {
+  Future<Map<String, dynamic>> updateOrderStatus(
+      String orderId, String status) async {
     try {
       // Envía el estado dentro de un objeto JSON
       final response = await _dio.put(
@@ -106,6 +107,7 @@ class OrdersService {
         throw Exception(
             'Error al actualizar el estado del pedido: ${response.data}');
       }
+      return response.data;
     } catch (error) {
       throw Exception('Error al actualizar el estado del pedido: $error');
     }

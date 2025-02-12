@@ -98,6 +98,7 @@ const OrderController = {
   },
 
   // Actualizar el estado de un pedido
+  // Actualizar el estado de un pedido
   async updateStatus(req, res) {
     const { estado } = req.body;
     if (!['pendiente', 'en progreso', 'completado', 'cancelado', 'en cola'].includes(estado)) {
@@ -121,46 +122,76 @@ const OrderController = {
         return res.status(500).json({ error: `Error en Firebase Realtime: ${firebaseError.message}` });
       }
 
-      // Si el estado cambia a "completado", actualizar reportes y eliminar de Firestore
+      let mensajeAdicional = '';
+
+      // Si el estado cambia a "completado", actualizar reportes y reducir inventario SOLO de productos disponibles
       if (estado === 'completado') {
         const { distribuidorID, productos, total } = pedido;
 
-        for (const producto of productos) {
-          const { id_producto, cantidad } = producto;
-          try {
-            await axios.put(
-              `http://distributor-service:3004/distribuidor/inventario/${distribuidorID}/${id_producto}`,
-              { cantidad: -cantidad },
-              { headers: { Authorization: req.headers.authorization } }
-            );
-          } catch (error) {
-            console.error(`Error al reducir inventario para el producto ${id_producto}: ${error.message}`);
-            return res.status(500).json({ error: `Error al reducir inventario: ${error.message}` });
-          }
-        }
-        // Eliminar pedido de Firebase Realtime Database cuando se completa
         try {
+          //  Obtener inventario actual del distribuidor
+          const response = await axios.get(
+            `http://distributor-service:3004/distribuidor/inventario/${distribuidorID}`,
+            { headers: { Authorization: req.headers.authorization } }
+          );
+          const inventarioDisponible = response.data; // Suponiendo que devuelve un array de productos en inventario
+
+          let productosNoDisponibles = [];
+
+          for (const producto of productos) {
+            const { id_producto, cantidad } = producto;
+
+            // Verificar si el producto está en el inventario del distribuidor
+            const productoEnInventario = inventarioDisponible.find(p => p.id_producto === id_producto);
+
+            if (productoEnInventario) {
+              // Reducir stock del producto solo si está disponible
+              try {
+                await axios.put(
+                  `http://distributor-service:3004/distribuidor/inventario/${distribuidorID}/${id_producto}`,
+                  { cantidad: -cantidad },
+                  { headers: { Authorization: req.headers.authorization } }
+                );
+              } catch (error) {
+                console.error(`Error al reducir inventario para el producto ${id_producto}: ${error.message}`);
+              }
+            } else {
+              productosNoDisponibles.push(id_producto);
+            }
+          }
+
+          //  Si hay productos que no estaban en el inventario, devolver un mensaje en la respuesta
+          if (productosNoDisponibles.length > 0) {
+            mensajeAdicional = `No tienes estos productos en tu inventario: ${productosNoDisponibles.join(', ')}. Considera actualizar tu inventario.`;
+          }
+
+          //  Actualizar reportes y eliminar pedido de Firebase
           await Order.updateSalesReport(distribuidorID, total, productos);
           await Order.updateTopProducts(productos);
+
           try {
             await deleteOrderFromRealtime(id);
           } catch (firebaseDeleteError) {
             console.error(`Error eliminando pedido de Firebase: ${firebaseDeleteError.message}`);
-            // No retornamos 500 aquí para que no afecte la actualización del pedido
           }
-        } catch (firebaseDeleteError) {
-          console.error(`Error eliminando pedido de Firebase: ${firebaseDeleteError.message}`);
-          return res.status(500).json({ error: `Error eliminando pedido de Firebase: ${firebaseDeleteError.message}` });
+
+        } catch (inventoryError) {
+          console.error(`Error obteniendo inventario: ${inventoryError.message}`);
+          return res.status(500).json({ error: `Error obteniendo inventario: ${inventoryError.message}` });
         }
       }
 
-      res.status(200).json({ message: `Estado del pedido actualizado a ${estado}` });
+      res.status(200).json({
+        message: `Estado del pedido actualizado a ${estado}.`,
+        ...(mensajeAdicional ? { warning: mensajeAdicional } : {})
+      });
 
     } catch (error) {
       console.error('Fallo actualizando el estado del pedido:', error.message);
       res.status(500).json({ error: `Fallo actualizando el estado del pedido: ${error.message}` });
     }
   },
+
 
   // Generar reporte de ventas
   async generateSalesReport(req, res) {

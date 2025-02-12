@@ -5,7 +5,6 @@ const SalesController = {
     async getSalesByDay(req, res) {
         try {
             const { dia, distribuidorID } = req.params;
-            print('dia: ',dia);
             const report = await SalesModel.getSalesReportByDay(dia, distribuidorID);
             res.json(report || { message: 'No hay datos para esta fecha.' });
         } catch (error) {

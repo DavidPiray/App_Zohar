@@ -15,9 +15,12 @@ class ProfileClientScreen extends StatefulWidget {
   _ProfileClientScreenState createState() => _ProfileClientScreenState();
 }
 
+//variables de servicios
 class _ProfileClientScreenState extends State<ProfileClientScreen> {
   final ClientService clientService = ClientService();
   final AuthService securityService = AuthService();
+
+//variables globales
   final _formKey = GlobalKey<FormState>();
   bool _isEditing = false;
   bool _isChangingPassword = false;
@@ -43,6 +46,7 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
+//constructor ->incio de página
   @override
   void initState() {
     super.initState();
@@ -50,33 +54,111 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
     _oldPasswordController.text = 'Contraseña Actual';
   }
 
-  void _pickImage() async {
-    final image = await clientService.pickImage();
-    if (image != null) {
-      setState(() {
-        _selectedImage = image; // Ahora soporta tanto `File` como `Uint8List`
-      });
+//Constructor de la Página Inicial
+  @override
+  Widget build(BuildContext context) {
+    final bool isWideScreen = MediaQuery.of(context).size.width > 600;
 
-      AnimatedAlert.show(
-        // ignore: use_build_context_synchronously
-        context,
-        'Foto seleccionada',
-        'Se ha seleccionado una nueva foto de perfil.',
-        type: AnimatedAlertType.success,
-      );
-    }
+    return Wrapper(
+      userRole: "cliente",
+      child: ConstrainedBox(
+        constraints:
+            BoxConstraints(maxWidth: isWideScreen ? 600 : double.infinity),
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: _clientData,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(
+                child: Text('Error: ${snapshot.error}'),
+              );
+            } else {
+              final data = snapshot.data!;
+              if (_name == null) {
+                _name = data['nombre'];
+                _nameController.text = _name!;
+              }
+              if (_email == null) {
+                _email = data['email'];
+                _emailController.text = _email!;
+              }
+              if (_phone == null) {
+                _phone = data['celular'];
+                _phoneController.text = _phone!;
+              }
+              if (_address == null) {
+                _address = data['direccion'];
+                _addressController.text =
+                    _address!; // INICIALIZA EL CONTROLADOR SOLO SI ES NULL
+              }
+              _id ??= data['id_cliente'];
+              if (_idDistribuidor == null) {
+                _idDistribuidor = data['distribuidorID'];
+                _distribuidorController.text = _idDistribuidor!;
+              }
+              if (_zonaID == null) {
+                _zonaID = data['zonaID'];
+                _zonaController.text = _zonaID!;
+              }
+
+              if (_selectedLocation == null &&
+                  data['ubicacion'] != null &&
+                  data['ubicacion'] is Map<String, dynamic>) {
+                _selectedLocation = LatLng(
+                  data['ubicacion']['latitude'],
+                  data['ubicacion']['longitude'],
+                );
+              }
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        GestureDetector(
+                          child: CircleAvatar(
+                            radius: 60,
+                            backgroundImage: _selectedImage != null
+                                ? FileImage(_selectedImage!)
+                                : const AssetImage('assets/images/Logo3.png')
+                                    as ImageProvider,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Reemplazo del Column tradicional por Wrap adaptativo
+                        _buildFormFields(isWideScreen),
+
+                        if (_isEditing)
+                          ElevatedButton(
+                            onPressed: _saveChanges,
+                            child: const Text('Guardar Cambios'),
+                          ),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _isEditing = !_isEditing;
+                            });
+                          },
+                          child: const Text('Actualizar Datos'),
+                        ),
+                      ],
+                    )),
+              );
+            }
+          },
+        ),
+      ),
+    );
   }
 
+// Guardar cambios
   void _saveChanges() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
       try {
-        /* String? photoURL;
-
-        // 🔹 Subimos la imagen si el usuario seleccionó una nueva
-        if (_selectedImage != null) {
-          photoURL = await clientService.uploadImage(_selectedImage);
-        } */
         _name = _nameController.text;
         _phone = _phoneController.text;
         _address = _addressController.text;
@@ -90,7 +172,7 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
                   "latitude": _selectedLocation!.latitude,
                   "longitude": _selectedLocation!.longitude,
                 }
-              : null, // ✅ PASA LAS COORDENADAS SOLO SI EXISTEN
+              : null, // PASA LAS COORDENADAS SOLO SI EXISTEN
           //photoURL: photoURL, // Solo pasamos la URL, no el archivo
         );
         if (success) {
@@ -118,6 +200,7 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
     }
   }
 
+//Cambio de contraseña
   void _changePassword() async {
     if (_newPasswordController.text != _confirmPasswordController.text) {
       AnimatedAlert.show(
@@ -163,106 +246,7 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final bool isWideScreen = MediaQuery.of(context).size.width > 600;
-
-    return Wrapper(
-      userRole: "cliente",
-      child: ConstrainedBox(
-        constraints:
-            BoxConstraints(maxWidth: isWideScreen ? 600 : double.infinity),
-        child: FutureBuilder<Map<String, dynamic>>(
-          future: _clientData,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(
-                child: Text('Error: ${snapshot.error}'),
-              );
-            } else {
-              final data = snapshot.data!;
-              if (_name == null) {
-                _name = data['nombre'];
-                _nameController.text = _name!;
-              }
-              if (_email == null) {
-                _email = data['email'];
-                _emailController.text = _email!;
-              }
-              if (_phone == null) {
-                _phone = data['celular'];
-                _phoneController.text = _phone!;
-              }
-              if (_address == null) {
-                _address = data['direccion'];
-                _addressController.text =
-                    _address!; // 🔥 INICIALIZA EL CONTROLADOR SOLO SI ES NULL
-              }
-              _id ??= data['id_cliente'];
-              if (_idDistribuidor == null) {
-                _idDistribuidor = data['distribuidorID'];
-                _distribuidorController.text = _idDistribuidor!;
-              }
-              if (_zonaID == null) {
-                _zonaID = data['zonaID'];
-                _zonaController.text = _zonaID!;
-              }
-
-              if (_selectedLocation == null &&
-                  data['ubicacion'] != null &&
-                  data['ubicacion'] is Map<String, dynamic>) {
-                _selectedLocation = LatLng(
-                  data['ubicacion']['latitude'],
-                  data['ubicacion']['longitude'],
-                );
-              }
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        GestureDetector(
-                          onTap: _isEditing ? _pickImage : null,
-                          child: CircleAvatar(
-                            radius: 60,
-                            backgroundImage: _selectedImage != null
-                                ? FileImage(_selectedImage!)
-                                : const AssetImage('assets/images/Logo3.png')
-                                    as ImageProvider,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // 🔹 Reemplazo del Column tradicional por Wrap adaptativo
-                        _buildFormFields(isWideScreen),
-
-                        if (_isEditing)
-                          ElevatedButton(
-                            onPressed: _saveChanges,
-                            child: const Text('Guardar Cambios'),
-                          ),
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _isEditing = !_isEditing;
-                            });
-                          },
-                          child: const Text('Actualizar Datos'),
-                        ),
-                      ],
-                    )),
-              );
-            }
-          },
-        ),
-      ),
-    );
-  }
-
+//Construir campos de contraseña
   Widget _buildPasswordFields() {
     return Column(
       children: [
@@ -311,6 +295,7 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
     );
   }
 
+//Mapa
   Future<void> _openMap() async {
     _selectedLocation ??= const LatLng(-1.6635, -78.6547);
 
@@ -325,7 +310,7 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
             LatLng location,
             String city,
           ) {
-            // ✅ Devuelve los datos en un mapa en lugar de hacer pop() aquí
+            // Devuelve los datos en un mapa en lugar de hacer pop() aquí
             Navigator.pop(context, {
               "address": address,
               "location": location,
@@ -336,21 +321,13 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
       ),
     );
 
-    // ✅ SOLO SI HAY RESULTADOS, ACTUALIZA LAS VARIABLES GLOBALES
-    print('🔹 Datos recibidos del LocationPicker: $result');
+    // SOLO SI HAY RESULTADOS, ACTUALIZA LAS VARIABLES GLOBALES
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
         _address = result["address"];
         _selectedLocation = result["location"];
-        _addressController.text =
-            _address!; // 🔥 ACTUALIZA EL CONTROLLER TAMBIÉN
+        _addressController.text = _address!; //  ACTUALIZA EL CONTROLLER TAMBIÉN
       });
-
-      print("✅ Dirección actualizada: $_address");
-      print(
-          "✅ Coordenadas actualizadas: ${_selectedLocation?.latitude}, ${_selectedLocation?.longitude}");
-    } else {
-      print("❌ Cancelaste la selección de ubicación.");
     }
   }
 
@@ -360,6 +337,7 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
     });
   }
 
+//Construir el formulario de textos
   Widget _buildFormFields(bool isWideScreen) {
     return Wrap(
       spacing: 45.0, // Espaciado horizontal entre columnas
@@ -402,7 +380,7 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
               _togglePasswordEdit, // Llama a la función para mostrar los campos de nueva contraseña
         ),
         if (_isChangingPassword) ...[
-          _buildPasswordFields(), // ✅ Muestra los campos de cambio de contraseña
+          _buildPasswordFields(), // Muestra los campos de cambio de contraseña
           ElevatedButton(
             onPressed: _changePassword,
             child: const Text('Cambiar Contraseña'),
@@ -411,12 +389,13 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
       ].map((field) {
         return isWideScreen
             ? SizedBox(
-                width: 250, child: field) // ✅ 2 columnas en pantallas grandes
-            : field; // ✅ 1 columna en pantallas pequeñas
+                width: 250, child: field) // 2 columnas en pantallas grandes
+            : field; // 1 columna en pantallas pequeñas
       }).toList(),
     );
   }
 
+//Construir el campo del texto
   Widget _buildTextField(
     String label,
     void Function(String?) onSave, {
@@ -444,11 +423,11 @@ class _ProfileClientScreenState extends State<ProfileClientScreen> {
               ? IconButton(
                   icon: Icon(
                     isPasswordField
-                        ? Icons.edit // 🔹 Icono de editar en la contraseña
-                        : Icons.map, // 🔹 Icono de mapa en la dirección
+                        ? Icons.edit // Icono de editar en la contraseña
+                        : Icons.map, // Icono de mapa en la dirección
                     color: Colors.grey,
                   ),
-                  onPressed: onSuffixIconPressed, // ✅ Acción dinámica
+                  onPressed: onSuffixIconPressed, //Acción dinámica
                 )
               : isPasswordField
                   ? IconButton(

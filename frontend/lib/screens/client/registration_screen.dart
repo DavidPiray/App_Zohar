@@ -21,17 +21,18 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  // Variables
+  // Variables para los servicios
   final ClientService clientService = ClientService();
   final AuthService authService = AuthService();
-  //final ImagePicker _picker = ImagePicker();
   GoogleMapsService mapsService = GoogleMapsService();
+
+  //Variables globales
   final _formKey = GlobalKey<FormState>();
   int _currentPage = 0; // Paginación
   bool _isPasswordVisible = false;
   bool _isPasswordConfirmVisible = false;
   final TextEditingController _addressController = TextEditingController();
-
+  bool _isLoading = false;
   // Variables para los datos
   String? _name,
       _email,
@@ -43,90 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   LatLng? _selectedLocation;
   //File? _selectedImage;
 
-  // Abrir el mapa para seleccionar ubicación
-  Future<void> _openLocationPicker() async {
-    _selectedLocation ??= const LatLng(-1.6635, -78.6547);
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LocationPicker(
-          initialLocation: _selectedLocation!,
-          initialAddress: _address ?? "",
-          onLocationSelected: (
-            String address,
-            LatLng location,
-            String city,
-          ) {
-            setState(() {
-              _address = address;
-              _selectedLocation = location;
-              _addressController.text = address;
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  // Enviar los datos 
-  void _submitForm() async {
-    if (_formKey.currentState!.validate()) {
-      if (_password != _confirmPassword) {
-        AnimatedAlert.show(
-          context,
-          'Error',
-          'Las contraseñas no coinciden.',
-          type: AnimatedAlertType.error,
-        );
-        return;
-      }
-      _formKey.currentState!.save();
-      try {
-        final result = await clientService.registerClient(
-          name: _name!,
-          email: _email!,
-          address: _address!,
-          phone: _phone!,
-          zonaID: 'zona1',
-          distribuidorID: _distribuidorID!,
-          //photoURL: _selectedImage,
-          password: _password!,
-          location: _selectedLocation ??
-              const LatLng(48.858844, 2.294351), // Torre Eiffel (por defecto)
-        );
-
-        if (result) {
-          await authService.registerUser(_email!, _password!);
-          AnimatedAlert.show(
-            // ignore: use_build_context_synchronously
-            context,
-            'Registro Exitoso',
-            'El cliente se registró satisfactoriamente.',
-            type: AnimatedAlertType.success,
-            actionLabel: 'Continuar',
-            action: () {
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-          );
-        } else {
-          AnimatedAlert.show(
-            // ignore: use_build_context_synchronously
-            context,
-            'Error',
-            'No se pudo completar el registro.',
-          );
-        }
-      } catch (e) {
-        AnimatedAlert.show(
-          // ignore: use_build_context_synchronously
-          context,
-          'Error',
-          e.toString(),
-        );
-      }
-    }
-  }
-
+  // Constructor de la Página Inicial
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -168,188 +86,310 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       body: Stack(
         children: [
-          // Fondo degradado
-          Container(
-            decoration: const BoxDecoration(
-              gradient: AppColors.degradadoPrincipal,
-            ),
-          ),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              bool isWideScreen = constraints.maxWidth > 600;
-              return Row(
-                children: [
-                  if (isWideScreen)
-                    const Expanded(
-                      flex: 1,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          AnimatedLogo(size: 150),
-                          SizedBox(height: 20),
-                          AnimatedTitle(),
-                        ],
-                      ),
-                    ),
-                  Expanded(
-                    flex: 1,
-                    child: Column(
-                      mainAxisAlignment: isWideScreen
-                          ? MainAxisAlignment.center
-                          : MainAxisAlignment.start,
+          _isLoading
+              ?
+              // Fondo degradado
+              Container(
+                  decoration: const BoxDecoration(
+                    gradient: AppColors.degradadoPrincipal,
+                  ),
+                )
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    bool isWideScreen = constraints.maxWidth > 600;
+                    return Row(
                       children: [
-                        if (!isWideScreen)
-                          const Column(
-                            children: [
-                              SizedBox(height: 10),
-                              AnimatedLogo(size: 100),
-                              SizedBox(height: 10),
-                            ],
-                          ),
-                        Center(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: isWideScreen ? 400 : 350,
+                        if (isWideScreen)
+                          const Expanded(
+                            flex: 1,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                AnimatedLogo(size: 150),
+                                SizedBox(height: 20),
+                                AnimatedTitle(),
+                              ],
                             ),
-                            child: Form(
-                              key: _formKey,
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            mainAxisAlignment: isWideScreen
+                                ? MainAxisAlignment.center
+                                : MainAxisAlignment.start,
+                            children: [
+                              if (!isWideScreen)
+                                const Column(
                                   children: [
-                                    IndexedStack(
-                                      index:
-                                          _currentPage, // Muestra la página seleccionada
-                                      children: [
-                                        // Primera página del formulario
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const SizedBox(height: 15),
-                                            _buildTextField('Nombre',
-                                                (value) => _name = value,
-                                                validator:
-                                                    Validators.validateName,
-                                                prefixIcon: Icons.person),
-                                            const SizedBox(height: 15),
-                                            _buildTextField(
-                                                'Correo Electrónico',
-                                                (value) => _email = value,
-                                                validator:
-                                                    Validators.validateEmail,
-                                                keyboardType:
-                                                    TextInputType.emailAddress,
-                                                prefixIcon: Icons.email),
-                                            const SizedBox(height: 15),
-                                            _buildTextField(
-                                              'Contraseña',
-                                              (value) => _password = value,
-                                              validator:
-                                                  Validators.validatePassword,
-                                              obscureText: true,
-                                              prefixIcon: Icons.lock,
-                                              isPasswordField: true,
-                                            ),
-                                            const SizedBox(height: 15),
-                                            _buildTextField(
-                                              'Confirmar Contraseña',
-                                              (value) =>
-                                                  _confirmPassword = value,
-                                              obscureText: true,
-                                              prefixIcon: Icons.lock,
-                                              isPasswordConfirmField: true,
-                                            ),
-                                          ],
-                                        ),
-                                        // Segunda página del formulario
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const SizedBox(height: 15),
-                                            _buildTextField(
-                                                'Código de Distribuidor (Opcional)',
-                                                (value) =>
-                                                    _distribuidorID = value,
-                                                prefixIcon:
-                                                    Icons.local_shipping),
-                                            const SizedBox(height: 10),
-                                            _buildTextField('Teléfono',
-                                                (value) => _phone = value,
-                                                validator:
-                                                    Validators.validatePhone,
-                                                keyboardType:
-                                                    TextInputType.phone,
-                                                prefixIcon: Icons.phone),
-                                            const SizedBox(height: 10),
-                                            _buildTextField(
-                                              'Dirección',
-                                              (value) {},
-                                              keyboardType:
-                                                  TextInputType.streetAddress,
-                                              prefixIcon: Icons.place,
-                                              isLocationField: true,
-                                              onSuffixIconPressed:
-                                                  _openLocationPicker,
-                                            ),
-                                            const SizedBox(height: 10),
-                                            const SizedBox(height: 16),
-                                            //_buildPhotoPicker(),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 25),
-                                    // Botones de navegación
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        if (_currentPage >
-                                            0) // Si no estamos en la primera página, mostramos "Atrás"
-                                          ElevatedButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                _currentPage--; // Retrocede a la página anterior
-                                              });
-                                            },
-                                            child: const Text("Atrás"),
-                                          ),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            if (_currentPage == 0) {
-                                              // Si estamos en la primera página, pasamos a la segunda
-                                              setState(() {
-                                                _currentPage = 1;
-                                              });
-                                            } else {
-                                              // Si estamos en la segunda página, enviamos el formulario
-                                              _submitForm();
-                                            }
-                                          },
-                                          child: Text(_currentPage == 0
-                                              ? "Siguiente"
-                                              : "Registrarse"),
-                                        ),
-                                      ],
-                                    ),
+                                    SizedBox(height: 10),
+                                    AnimatedLogo(size: 100),
+                                    SizedBox(height: 10),
                                   ],
                                 ),
+                              Center(
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: isWideScreen ? 400 : 350,
+                                  ),
+                                  child: Form(
+                                    key: _formKey,
+                                    child: SingleChildScrollView(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          IndexedStack(
+                                            index:
+                                                _currentPage, // Muestra la página seleccionada
+                                            children: [
+                                              // Primera página del formulario
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const SizedBox(height: 15),
+                                                  _buildTextField('Nombre',
+                                                      (value) => _name = value,
+                                                      validator: Validators
+                                                          .validateName,
+                                                      prefixIcon: Icons.person),
+                                                  const SizedBox(height: 15),
+                                                  _buildTextField(
+                                                      'Correo Electrónico',
+                                                      (value) => _email = value,
+                                                      validator: Validators
+                                                          .validateEmail,
+                                                      keyboardType:
+                                                          TextInputType
+                                                              .emailAddress,
+                                                      prefixIcon: Icons.email),
+                                                  const SizedBox(height: 15),
+                                                  _buildTextField(
+                                                    'Contraseña',
+                                                    (value) =>
+                                                        _password = value,
+                                                    validator: Validators
+                                                        .validatePassword,
+                                                    obscureText: true,
+                                                    prefixIcon: Icons.lock,
+                                                    isPasswordField: true,
+                                                  ),
+                                                  const SizedBox(height: 15),
+                                                  _buildTextField(
+                                                    'Confirmar Contraseña',
+                                                    (value) =>
+                                                        _confirmPassword =
+                                                            value,
+                                                    obscureText: true,
+                                                    prefixIcon: Icons.lock,
+                                                    isPasswordConfirmField:
+                                                        true,
+                                                  ),
+                                                ],
+                                              ),
+                                              // Segunda página del formulario
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const SizedBox(height: 15),
+                                                  _buildTextField(
+                                                      'Código de Distribuidor (Opcional)',
+                                                      (value) =>
+                                                          _distribuidorID =
+                                                              value,
+                                                      prefixIcon:
+                                                          Icons.local_shipping),
+                                                  const SizedBox(height: 10),
+                                                  _buildTextField('Teléfono',
+                                                      (value) => _phone = value,
+                                                      validator: Validators
+                                                          .validatePhone,
+                                                      keyboardType:
+                                                          TextInputType.phone,
+                                                      prefixIcon: Icons.phone),
+                                                  const SizedBox(height: 10),
+                                                  _buildTextField(
+                                                    'Dirección',
+                                                    (value) {},
+                                                    keyboardType: TextInputType
+                                                        .streetAddress,
+                                                    prefixIcon: Icons.place,
+                                                    isLocationField: true,
+                                                    onSuffixIconPressed:
+                                                        _openLocationPicker,
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                  const SizedBox(height: 16),
+                                                  //_buildPhotoPicker(),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 25),
+                                          // Botones de navegación
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              if (_currentPage >
+                                                  0) // Si no estamos en la primera página, mostramos "Atrás"
+                                                ElevatedButton(
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      _currentPage--; // Retrocede a la página anterior
+                                                    });
+                                                  },
+                                                  child: const Text("Atrás"),
+                                                ),
+                                              ElevatedButton(
+                                                onPressed: () {
+                                                  if (_currentPage == 0) {
+                                                    // Si estamos en la primera página, pasamos a la segunda
+                                                    setState(() {
+                                                      _currentPage = 1;
+                                                    });
+                                                  } else {
+                                                    // Si estamos en la segunda página, enviamos el formulario
+                                                    _submitForm();
+                                                  }
+                                                },
+                                                child: Text(_currentPage == 0
+                                                    ? "Siguiente"
+                                                    : "Registrarse"),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+                    );
+                  },
+                ),
         ],
       ),
     );
+  }
+
+  // Abrir el mapa para seleccionar ubicación
+  /* Future<void> _openLocationPicker() async {
+    _selectedLocation ??= const LatLng(-1.6635, -78.6547);
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPicker(
+          initialLocation: _selectedLocation!,
+          initialAddress: _address ?? "",
+          onLocationSelected: (
+            String address,
+            LatLng location,
+            String city,
+          ) {
+            setState(() {
+              _address = address;
+              _selectedLocation = location;
+              _addressController.text = address;
+            });
+          },
+        ),
+      ),
+    );
+  } */
+  Future<void> _openLocationPicker() async {
+    _selectedLocation ??= const LatLng(-1.6635, -78.6547);
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPicker(
+          initialLocation: _selectedLocation!,
+          initialAddress: _address ?? "",
+          onLocationSelected: (String address, LatLng location, String city) {},
+        ),
+      ),
+    );
+
+    // 📌 Verifica si el usuario seleccionó una ubicación
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        _address = result["address"];
+        _selectedLocation = result["location"];
+        _addressController.text = _address!;
+      });
+    }
+  }
+
+  // Enviar los datos
+  void _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      if (_password != _confirmPassword) {
+        AnimatedAlert.show(
+          context,
+          'Error',
+          'Las contraseñas no coinciden.',
+          type: AnimatedAlertType.error,
+        );
+        return;
+      }
+      // 🔹 Mostrar indicador de carga
+      setState(() {
+        _isLoading = true;
+      });
+      _formKey.currentState!.save();
+      try {
+        final result = await clientService.registerClient(
+          name: _name!,
+          email: _email!,
+          address: _address!,
+          phone: _phone!,
+          zonaID: 'zona1',
+          distribuidorID: _distribuidorID!,
+          //photoURL: _selectedImage,
+          password: _password!,
+          location: _selectedLocation ?? const LatLng(48.858844, 2.294351), //
+        );
+
+        if (result) {
+          await authService.registerUser(_email!, _password!);
+          AnimatedAlert.show(
+            // ignore: use_build_context_synchronously
+            context,
+            'Registro Exitoso',
+            'El cliente se registró satisfactoriamente.',
+            type: AnimatedAlertType.success,
+            actionLabel: 'Continuar',
+            action: () {
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+          );
+        } else {
+          AnimatedAlert.show(
+            // ignore: use_build_context_synchronously
+            context,
+            'Error',
+            'No se pudo completar el registro.',
+          );
+        }
+      } catch (e) {
+        AnimatedAlert.show(
+          // ignore: use_build_context_synchronously
+          context,
+          'Error',
+          e.toString(),
+        );
+      }
+      // 🔹 Ocultar indicador de carga cuando termina
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   // Widget para construir los espacios de texto

@@ -1,36 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../core/styles/colors.dart';
 import '../../widgets/wrapper.dart';
 
-class DistributorSettingsScreen extends StatefulWidget {
-  const DistributorSettingsScreen({super.key});
+class ClientSettingsScreen extends StatefulWidget {
+  const ClientSettingsScreen({super.key});
 
   @override
-  _DistributorSettingsScreenState createState() =>
-      _DistributorSettingsScreenState();
+  _ClientSettingsScreenState createState() => _ClientSettingsScreenState();
 }
 
-class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
+class _ClientSettingsScreenState extends State<ClientSettingsScreen> {
   TimeOfDay _openingTime = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay _closingTime = const TimeOfDay(hour: 20, minute: 0);
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String distribuidorID = "";
 
-//Cosntructor de incio de página
+//Cosntructor -> Página de incio
   @override
   void initState() {
     super.initState();
     _loadDistributorID();
   }
 
-//cosntructor de incio de página
+//Cosntructor de página de inicio
   @override
   Widget build(BuildContext context) {
     return Wrapper(
-      userRole: "distribuidor",
+      userRole: "cliente",
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Card(
@@ -55,11 +53,11 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
                 Expanded(
                   child: ListView(
                     children: [
-                      _buildExpandableItem(
-                        "Horario",
-                        Icons.access_time,
-                        _buildTimeSettings(),
-                      ),
+                      /* _buildExpandableItem(
+                        "Notificaciones",
+                        Icons.notifications,
+                        Center(child: Text("Configuración de Notificaciones")),
+                      ), */
                       _buildExpandableItem(
                         "Soporte",
                         Icons.support,
@@ -76,7 +74,7 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     );
   }
 
-//Items expandibles
+//Itemes expansibles
   Widget _buildExpandableItem(String title, IconData icon, Widget content) {
     return ExpansionTile(
       leading: Icon(icon, color: Colors.blueAccent),
@@ -90,7 +88,6 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     );
   }
 
-//Tiempo
   Widget _buildTimeSettings() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,7 +122,6 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     );
   }
 
-//Distribuidor
   Future<void> _loadDistributorID() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -135,7 +131,6 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     _loadSettings();
   }
 
-//Cargar configuraciones
   Future<void> _loadSettings() async {
     if (distribuidorID.isEmpty) return;
 
@@ -155,7 +150,6 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     }
   }
 
-//Tiempo
   Future<void> _pickTime(bool isOpening) async {
     TimeOfDay? pickedTime = await showTimePicker(
       context: context,
@@ -174,7 +168,6 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     }
   }
 
-//Guardar cambios
   Future<void> _saveSettings() async {
     if (distribuidorID.isEmpty) return;
 
@@ -196,37 +189,31 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
       height: 400, // Ajusta la altura según necesidad
       child: ListView(
         shrinkWrap: true,
-        physics: NeverScrollableScrollPhysics(),
+        physics: NeverScrollableScrollPhysics(), // Evita conflictos de scroll
         children: [
           _buildHelpItem(
-            icon: Icons.person,
-            title: 'Perfil y Configuración',
+            icon: Icons.shopping_cart,
+            title: 'Perfil',
             description:
-                'Desde este apartado puedes ver tu información personal y actualizar tu contraseña.\n\n'
-                '--> En "Perfil" puedes ver y modificar tus datos personales.\n\n'
-                '--> Si deseas cambiar tu contraseña, selecciona la opción "Cambiar Contraseña".',
+                'En este apartado podrá ver su información y modificar su contraseña.\n\n'
+                '--> Al entrar al apartado de perfil podrá ver su información.\n\n'
+                '--> Al seleccionar la opción de cambiar contraseña, podrá cambiarla.',
           ),
           _buildHelpItem(
             icon: Icons.local_shipping,
-            title: 'Inventario',
-            description: 'Consulta el inventario que dispone.\n\n'
-                '--> Puedes ver la cantidad de productos en stock.',
-          ),
-          _buildHelpItem(
-            icon: Icons.add_shopping_cart,
-            title: 'Reportes',
-            description: 'Consulta la cantidad de producto vendido.\n\n'
-                '--> En la sección "Productos", elige los artículos que necesitas y selecciona la cantidad.\n\n'
-                '--> Al confirmar la solicitud, recibirás una notificación cuando el pedido esté aprobado.',
-          ),
-          _buildHelpItem(
-            icon: Icons.delivery_dining,
-            title: 'Entregar pedido',
+            title: 'Estado de Pedidos',
             description:
-                'Se podrá visualizar los pedidos que puede realizar.\n\n'
-                '--> Podrá seleccionar entregar para comenzar la ruta hacia el cliente.\n\n'
-                '--> Podrá seleccionar completado cuando haya finalizado la entrega.\n\n'
-                '--> Podrá filtrar los pedidos con los filtros en la parte superior.',
+                'Consulta el estado de tus pedidos en la sección "Mis Pedidos".\n\n'
+                '--> Puedes ver el estado de cada pedido (Pendiente, Enviado, Entregado).\n\n'
+                '--> Si tienes dudas sobre un pedido, puedes contactarnos desde la sección de soporte.',
+          ),
+          _buildHelpItem(
+            icon: Icons.credit_card,
+            title: 'Realizar pedido',
+            description:
+                'Podrá realizar el pedido de las botellas y su cantidad.\n\n'
+                '--> Se mostrará en la pantalla de inicio el producto en stock, podrá elegir la cantidad y ver su precio.\n\n'
+                '--> Podrá realizar el pedido en la parte inferior derecha, se abrirá la información y podrá confirmar el pedido.',
           ),
           _buildHelpItem(
             icon: Icons.info,
@@ -245,6 +232,7 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ),
+          SizedBox(height: 10),
         ],
       ),
     );
@@ -257,14 +245,14 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
       required String description}) {
     return ExpansionTile(
       leading: Icon(icon, color: Colors.blueAccent, size: 30),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Text(
             description,
             textAlign: TextAlign.justify,
-            style: TextStyle(fontSize: 14, color: Colors.black87),
+            style: const TextStyle(fontSize: 14, color: Colors.black87),
           ),
         ),
       ],
