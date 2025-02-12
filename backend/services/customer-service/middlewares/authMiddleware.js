@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 
+//Verifica si es un token válido
 const authMiddleware = (req, res, next) => {
   const token = req.header('Authorization');
   if (!token) return res.status(401).json({ error: 'Acceso Denegado' });

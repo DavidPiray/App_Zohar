@@ -1,3 +1,4 @@
+//Deniega acceso a ciertas rutas, autentica usuario.
 const jwt = require('jsonwebtoken');
 
 const authMiddleware = (req, res, next) => {

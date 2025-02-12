@@ -1,5 +1,6 @@
 const Joi = require('joi');
 
+//Validación para crear distribuidor
 const createDistributorSchema = Joi.object({
   id_distribuidor: Joi.string().required(),
   nombre: Joi.string().required(),
@@ -9,6 +10,7 @@ const createDistributorSchema = Joi.object({
   zonaAsignada: Joi.string().optional(),
 });
 
+//validación para actualizar distribuidor
 const updateDistributorSchema = Joi.object({
   nombre: Joi.string().optional(),
   email: Joi.string().email().optional(),

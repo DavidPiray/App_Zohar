@@ -1,3 +1,4 @@
+//validar tokens validos
 const jwt = require('jsonwebtoken');
 
 const authMiddleware = (req, res, next) => {

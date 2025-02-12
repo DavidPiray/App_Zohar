@@ -1,5 +1,6 @@
 const Joi = require('joi');
 
+//valida el crear ordene
 const createOrderSchema = Joi.object({
   id_pedido: Joi.string().required(),
   clienteID: Joi.string().required(),
@@ -16,6 +17,7 @@ const createOrderSchema = Joi.object({
   total: Joi.number().min(0).required(),
 });
 
+//valida el actualiza ordene
 const updateOrderSchema = Joi.object({
   distribuidorID: Joi.string().optional(),
   estado: Joi.string().valid('pendiente', 'en progreso', 'completado', 'cancelado','en cola').optional(),

@@ -1,5 +1,6 @@
 const Joi = require('joi');
 
+//Crear producto
 const productSchema = Joi.object({
   id_producto: Joi.string().required(),
   nombre: Joi.string().required(),
@@ -9,6 +10,7 @@ const productSchema = Joi.object({
   stock: Joi.number().integer().min(0).required()
 });
 
+//Actualizar producto
 const updateProductSchema = Joi.object({
   nombre: Joi.string().optional(),
   descripcion: Joi.string().optional(),
