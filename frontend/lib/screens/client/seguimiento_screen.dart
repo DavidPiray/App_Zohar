@@ -5,6 +5,7 @@ class OrderTrackingScreen extends StatelessWidget {
 
   OrderTrackingScreen({required this.orderId});
 
+// Constructor de la Página Inicial
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -15,7 +16,8 @@ class OrderTrackingScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text('Pedido #$orderId', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text('Pedido #$orderId',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             SizedBox(height: 20),
             Text('Estado actual: En Progreso', style: TextStyle(fontSize: 18)),
             SizedBox(height: 20),

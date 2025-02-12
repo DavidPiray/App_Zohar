@@ -15,6 +15,7 @@ class InventoryScreen extends StatefulWidget {
   _InventoryScreenState createState() => _InventoryScreenState();
 }
 
+// Variables de servicio
 class _InventoryScreenState extends State<InventoryScreen> {
   final AuthService authService = AuthService();
   final DistributorService distributorService = DistributorService();
@@ -28,13 +29,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
   TimeOfDay? _closeTime;
   double _progress = 0.0;
 
+// COnstrucitor de incio
   @override
   void initState() {
     super.initState();
     _inventory = distributorService.getDistributorInventory("dist1");
     _startTimer();
-    _listenToConfigChanges(); // 🔹 ESCUCHA CAMBIOS EN TIEMPO REAL
-    // 🔹 Actualiza la hora en tiempo real cada segundo
+    _listenToConfigChanges(); // ESCUCHA CAMBIOS EN TIEMPO REAL
+    // Actualiza la hora en tiempo real cada segundo
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
       setState(() {
         _currentTime = DateTime.now();
@@ -48,12 +50,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
     super.dispose();
   }
 
+// COnstrucitor de Página deincio
   @override
   Widget build(BuildContext context) {
     final bool isWideScreen = MediaQuery.of(context).size.width > 600;
 
     return Wrapper(
-      userRole: "distribuidor", // 🔹 PASA EL ROL DEL USUARIO
+      userRole: "distribuidor", // PASA EL ROL DEL USUARIO
       child: Row(
         children: [
           // Contenido principal
@@ -105,6 +108,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+// tiempo
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
@@ -114,6 +118,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
+//Actualización de progreso
   void _updateProgress() {
     if (_openTime == null || _closeTime == null) return;
 
@@ -134,6 +139,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
+//Ordenes
   void _toggleSortOrder() {
     setState(() {
       isAscending = !isAscending;
@@ -148,6 +154,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
+// Configuración de cambios
   void _listenToConfigChanges() {
     FirebaseFirestore.instance
         .collection('configuracion_distribuidores')
@@ -166,12 +173,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
+//Firestore
   TimeOfDay? _parseFirestoreTime(String? timeString) {
     if (timeString == null) return null;
     final parts = timeString.split(":");
     return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 
+//Inventario stock
   void _showRestockForm(BuildContext context, Map<String, dynamic> product) {
     showDialog(
       context: context,
@@ -189,12 +198,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+//Stock Productos
   Future<void> _restockProduct(
       String distributorId, String productId, int quantity) async {
     try {
       User? user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        print('Error: Usuario no autenticado');
         return;
       }
       final ref = FirebaseFirestore.instance.collection('recargas');
@@ -218,6 +227,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
+//Calendario
   Widget _buildTimeline() {
     if (_openTime == null || _closeTime == null) {
       return const Center(child: CircularProgressIndicator());
@@ -261,6 +271,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+//Inventario
   Widget _buildInventoryList() {
     return FutureBuilder<List<dynamic>>(
       future: _inventory,
@@ -302,6 +313,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 }
 
+//Formulario
 class RestockForm extends StatelessWidget {
   final Map<String, dynamic> product;
   final Function(int quantity) onSubmit;

@@ -19,12 +19,14 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String distribuidorID = "";
 
+//Cosntructor de incio de página
   @override
   void initState() {
     super.initState();
     _loadDistributorID();
   }
 
+//cosntructor de incio de página
   @override
   Widget build(BuildContext context) {
     return Wrapper(
@@ -58,11 +60,6 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
                         Icons.access_time,
                         _buildTimeSettings(),
                       ),
-                      /* _buildExpandableItem(
-                        "Notificaciones",
-                        Icons.notifications,
-                        Center(child: Text("Configuración de Notificaciones")),
-                      ), */
                       _buildExpandableItem(
                         "Soporte",
                         Icons.support,
@@ -79,10 +76,11 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     );
   }
 
+//Items expandibles
   Widget _buildExpandableItem(String title, IconData icon, Widget content) {
     return ExpansionTile(
       leading: Icon(icon, color: Colors.blueAccent),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -92,6 +90,7 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     );
   }
 
+//Tiempo
   Widget _buildTimeSettings() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,6 +125,7 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     );
   }
 
+//Distribuidor
   Future<void> _loadDistributorID() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -135,6 +135,7 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     _loadSettings();
   }
 
+//Cargar configuraciones
   Future<void> _loadSettings() async {
     if (distribuidorID.isEmpty) return;
 
@@ -154,6 +155,7 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     }
   }
 
+//Tiempo
   Future<void> _pickTime(bool isOpening) async {
     TimeOfDay? pickedTime = await showTimePicker(
       context: context,
@@ -172,6 +174,7 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     }
   }
 
+//Guardar cambios
   Future<void> _saveSettings() async {
     if (distribuidorID.isEmpty) return;
 
@@ -187,6 +190,7 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     });
   }
 
+//Ayuda
   Widget _buildHelpContent() {
     return SizedBox(
       height: 400, // Ajusta la altura según necesidad
@@ -246,6 +250,7 @@ class _DistributorSettingsScreenState extends State<DistributorSettingsScreen> {
     );
   }
 
+//Items de ayuda
   Widget _buildHelpItem(
       {required IconData icon,
       required String title,

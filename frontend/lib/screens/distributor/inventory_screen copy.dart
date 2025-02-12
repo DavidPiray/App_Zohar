@@ -1,5 +1,3 @@
-
-
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,22 +13,25 @@ class InventoryScreen extends StatefulWidget {
   _InventoryScreenState createState() => _InventoryScreenState();
 }
 
+//Variables de servicio
 class _InventoryScreenState extends State<InventoryScreen> {
   final AuthService authService = AuthService();
   final DistributorService distributorService = DistributorService();
 
+//Variables globales
   late Future<List<dynamic>> _inventory;
   bool isSidebarVisible = true;
   bool isAscending = true;
   late Timer _timer;
   DateTime _currentTime = DateTime.now();
 
+//Constructor -> Página de incio
   @override
   void initState() {
     super.initState();
     _inventory = distributorService.getDistributorInventory("dist1");
 
-    // 🔹 Actualiza la hora en tiempo real cada segundo
+    // Actualiza la hora en tiempo real cada segundo
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) {
       setState(() {
         _currentTime = DateTime.now();
@@ -38,84 +39,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
-  void _logout(BuildContext context) async {
-    await authService.logout();
-    // ignore: use_build_context_synchronously
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
-  void _toggleSidebar() {
-    setState(() {
-      isSidebarVisible = !isSidebarVisible;
-    });
-  }
-
-  void _toggleSortOrder() {
-    setState(() {
-      isAscending = !isAscending;
-      _inventory = distributorService
-          .getDistributorInventory("dist1")
-          .then((list) => list
-            ..sort((a, b) {
-              return isAscending
-                  ? a['stock'].compareTo(b['stock'])
-                  : b['stock'].compareTo(a['stock']);
-            }));
-    });
-  }
-
-  void _showRestockForm(BuildContext context, Map<String, dynamic> product) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Recargar Botellones'),
-          content: RestockForm(
-            product: product,
-            onSubmit: (quantity) {
-              _restockProduct("dist1", product['id_producto'], quantity);
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _restockProduct(
-      String distributorId, String productId, int quantity) async {
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        print('Error: Usuario no autenticado');
-        return;
-      }
-      final ref = FirebaseFirestore.instance.collection('recargas');
-      await ref.add({
-        'distribuidorId': distributorId,
-        'productoId': productId,
-        'cantidad': quantity,
-        'fecha': FieldValue.serverTimestamp(),
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Solicitud de recarga enviada con éxito.')),
-      );
-    } catch (e) {
-      debugPrint('Error al enviar la solicitud de recarga: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Error al enviar la solicitud de recarga.')),
-      );
-    }
-  }
-
+//COnstructir de página de incio
   @override
   Widget build(BuildContext context) {
     final bool isWideScreen = MediaQuery.of(context).size.width > 600;
@@ -150,6 +74,87 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+//Logout
+  void _logout(BuildContext context) async {
+    await authService.logout();
+    // ignore: use_build_context_synchronously
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+
+  void _toggleSidebar() {
+    setState(() {
+      isSidebarVisible = !isSidebarVisible;
+    });
+  }
+
+//Stock
+  void _toggleSortOrder() {
+    setState(() {
+      isAscending = !isAscending;
+      _inventory = distributorService
+          .getDistributorInventory("dist1")
+          .then((list) => list
+            ..sort((a, b) {
+              return isAscending
+                  ? a['stock'].compareTo(b['stock'])
+                  : b['stock'].compareTo(a['stock']);
+            }));
+    });
+  }
+
+//Recargar botellas
+  void _showRestockForm(BuildContext context, Map<String, dynamic> product) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Recargar Botellones'),
+          content: RestockForm(
+            product: product,
+            onSubmit: (quantity) {
+              _restockProduct("dist1", product['id_producto'], quantity);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _restockProduct(
+      String distributorId, String productId, int quantity) async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        return;
+      }
+      final ref = FirebaseFirestore.instance.collection('recargas');
+      await ref.add({
+        'distribuidorId': distributorId,
+        'productoId': productId,
+        'cantidad': quantity,
+        'fecha': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Solicitud de recarga enviada con éxito.')),
+      );
+    } catch (e) {
+      debugPrint('Error al enviar la solicitud de recarga: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Error al enviar la solicitud de recarga.')),
+      );
+    }
+  }
+
+//Hora de entrada/salida
   Widget _buildTimeline() {
     final openTime =
         DateTime(_currentTime.year, _currentTime.month, _currentTime.day, 8);
@@ -180,6 +185,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+//Slider
   Widget _buildSidebar() {
     return Container(
       width: 250,
@@ -188,6 +194,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+//Cosntructor de contenedor
   Widget _buildSidebarContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,6 +215,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+//Inventario
   Widget _buildInventoryList() {
     return FutureBuilder<List<dynamic>>(
       future: _inventory,
@@ -249,6 +257,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 }
 
+//Funcion de form
 class RestockForm extends StatelessWidget {
   final Map<String, dynamic> product;
   final Function(int quantity) onSubmit;

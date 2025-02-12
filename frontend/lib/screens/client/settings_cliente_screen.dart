@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../core/styles/colors.dart';
 import '../../widgets/wrapper.dart';
 
@@ -18,12 +17,14 @@ class _ClientSettingsScreenState extends State<ClientSettingsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String distribuidorID = "";
 
+//Cosntructor -> Página de incio
   @override
   void initState() {
     super.initState();
     _loadDistributorID();
   }
 
+//Cosntructor de página de inicio
   @override
   Widget build(BuildContext context) {
     return Wrapper(
@@ -73,10 +74,11 @@ class _ClientSettingsScreenState extends State<ClientSettingsScreen> {
     );
   }
 
+//Itemes expansibles
   Widget _buildExpandableItem(String title, IconData icon, Widget content) {
     return ExpansionTile(
       leading: Icon(icon, color: Colors.blueAccent),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -181,6 +183,7 @@ class _ClientSettingsScreenState extends State<ClientSettingsScreen> {
     });
   }
 
+//Ayuda
   Widget _buildHelpContent() {
     return SizedBox(
       height: 400, // Ajusta la altura según necesidad
@@ -235,20 +238,21 @@ class _ClientSettingsScreenState extends State<ClientSettingsScreen> {
     );
   }
 
+//Items de ayuda
   Widget _buildHelpItem(
       {required IconData icon,
       required String title,
       required String description}) {
     return ExpansionTile(
       leading: Icon(icon, color: Colors.blueAccent, size: 30),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Text(
             description,
             textAlign: TextAlign.justify,
-            style: TextStyle(fontSize: 14, color: Colors.black87),
+            style: const TextStyle(fontSize: 14, color: Colors.black87),
           ),
         ),
       ],

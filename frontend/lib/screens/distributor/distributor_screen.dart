@@ -6,7 +6,6 @@ import 'package:frontend/services/product_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../core/styles/colors.dart';
 import '../../services/distributor_service.dart';
 import '../../services/orders_service.dart';
@@ -23,6 +22,7 @@ class DistributorScreen extends StatefulWidget {
   State<DistributorScreen> createState() => _DistributorScreenState();
 }
 
+//Variables de servicio
 class _DistributorScreenState extends State<DistributorScreen> {
   final DistributorService distributorService = DistributorService();
   final ClientService clientService = ClientService();
@@ -30,7 +30,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
   final ProductService productService = ProductService();
   final AuthService authService = AuthService();
   final RealtimeService realtimeService = RealtimeService();
-
   final LocationService locationService = LocationService();
 
   // ignore: unused_field
@@ -46,6 +45,8 @@ class _DistributorScreenState extends State<DistributorScreen> {
     'pendiente': 'en progreso',
     'en progreso': 'completado'
   };
+
+  //Mapeo de colores
   Map<String, Color> statusColors = {
     'pendiente': Colors.grey,
     'en progreso': Colors.amber,
@@ -64,12 +65,56 @@ class _DistributorScreenState extends State<DistributorScreen> {
   int currentPage = 1;
   final int itemsPerPage = 5;
 
+  // Constructor -> Inicio de página
   @override
   void initState() {
     super.initState();
     _fetchOrders();
     _fetchProducts();
     _listenToRealtimeUpdates();
+  }
+
+//Constructor de la página de incio
+  @override
+  Widget build(BuildContext context) {
+    return Wrapper(
+      userRole: "distribuidor", // PASA EL ROL DEL USUARIO
+      child: Row(
+        children: [
+          // Contenido principal
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                elevation: 5,
+                color: AppColors.back,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Pedidos Asignados",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: _buildOrdersList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Para obtener los pedidos
@@ -191,15 +236,12 @@ class _DistributorScreenState extends State<DistributorScreen> {
 
   // Actualizar las ubicaciones
   Future<LatLng?> _updateLocation(String customerId, String orderId) async {
-    print('📌 Buscando ubicación del cliente $customerId...');
-
     Map<String, dynamic>? clientLocation =
         await clientService.getCustomerLocation(customerId);
 
     if (clientLocation == null ||
         !clientLocation.containsKey('latitude') ||
         !clientLocation.containsKey('longitude')) {
-      print('❌ No se encontró la ubicación del cliente.');
       AnimatedAlert.show(
         context,
         'Error',
@@ -208,8 +250,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
       );
       return null;
     }
-
-    print('✅ Cliente encontrado: $clientLocation');
 
     Position distributorLocation = await locationService.getCurrentLocation();
     LatLng distributorLatLng =
@@ -229,7 +269,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
       }
       realtimeService.updateDistributorLocation(
           orderId, newPosition.latitude, newPosition.longitude);
-      print('🔄 Actualizando distribuidor en Firebase: $newPosition');
     });
 
     return LatLng(
@@ -303,49 +342,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-
-    return Wrapper(
-      userRole: "distribuidor", // 🔹 PASA EL ROL DEL USUARIO
-      child: Row(
-        children: [
-          // Contenido principal
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Card(
-                elevation: 5,
-                color: AppColors.back,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      const Text(
-                        "Pedidos Asignados",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: _buildOrdersList(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  //Lsta de ordenes
   Widget _buildOrdersList() {
     return Padding(
       padding: const EdgeInsets.all(16.0),

@@ -21,11 +21,12 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  // Variables
+  // Variables para los servicios
   final ClientService clientService = ClientService();
   final AuthService authService = AuthService();
-  //final ImagePicker _picker = ImagePicker();
   GoogleMapsService mapsService = GoogleMapsService();
+
+  //Variables globales
   final _formKey = GlobalKey<FormState>();
   int _currentPage = 0; // Paginación
   bool _isPasswordVisible = false;
@@ -43,90 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   LatLng? _selectedLocation;
   //File? _selectedImage;
 
-  // Abrir el mapa para seleccionar ubicación
-  Future<void> _openLocationPicker() async {
-    _selectedLocation ??= const LatLng(-1.6635, -78.6547);
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LocationPicker(
-          initialLocation: _selectedLocation!,
-          initialAddress: _address ?? "",
-          onLocationSelected: (
-            String address,
-            LatLng location,
-            String city,
-          ) {
-            setState(() {
-              _address = address;
-              _selectedLocation = location;
-              _addressController.text = address;
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  // Enviar los datos 
-  void _submitForm() async {
-    if (_formKey.currentState!.validate()) {
-      if (_password != _confirmPassword) {
-        AnimatedAlert.show(
-          context,
-          'Error',
-          'Las contraseñas no coinciden.',
-          type: AnimatedAlertType.error,
-        );
-        return;
-      }
-      _formKey.currentState!.save();
-      try {
-        final result = await clientService.registerClient(
-          name: _name!,
-          email: _email!,
-          address: _address!,
-          phone: _phone!,
-          zonaID: 'zona1',
-          distribuidorID: _distribuidorID!,
-          //photoURL: _selectedImage,
-          password: _password!,
-          location: _selectedLocation ??
-              const LatLng(48.858844, 2.294351), // Torre Eiffel (por defecto)
-        );
-
-        if (result) {
-          await authService.registerUser(_email!, _password!);
-          AnimatedAlert.show(
-            // ignore: use_build_context_synchronously
-            context,
-            'Registro Exitoso',
-            'El cliente se registró satisfactoriamente.',
-            type: AnimatedAlertType.success,
-            actionLabel: 'Continuar',
-            action: () {
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-          );
-        } else {
-          AnimatedAlert.show(
-            // ignore: use_build_context_synchronously
-            context,
-            'Error',
-            'No se pudo completar el registro.',
-          );
-        }
-      } catch (e) {
-        AnimatedAlert.show(
-          // ignore: use_build_context_synchronously
-          context,
-          'Error',
-          e.toString(),
-        );
-      }
-    }
-  }
-
+  // Constructor de la Página Inicial
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -350,6 +268,90 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ],
       ),
     );
+  }
+
+  // Abrir el mapa para seleccionar ubicación
+  Future<void> _openLocationPicker() async {
+    _selectedLocation ??= const LatLng(-1.6635, -78.6547);
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPicker(
+          initialLocation: _selectedLocation!,
+          initialAddress: _address ?? "",
+          onLocationSelected: (
+            String address,
+            LatLng location,
+            String city,
+          ) {
+            setState(() {
+              _address = address;
+              _selectedLocation = location;
+              _addressController.text = address;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  // Enviar los datos
+  void _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      if (_password != _confirmPassword) {
+        AnimatedAlert.show(
+          context,
+          'Error',
+          'Las contraseñas no coinciden.',
+          type: AnimatedAlertType.error,
+        );
+        return;
+      }
+      _formKey.currentState!.save();
+      try {
+        final result = await clientService.registerClient(
+          name: _name!,
+          email: _email!,
+          address: _address!,
+          phone: _phone!,
+          zonaID: 'zona1',
+          distribuidorID: _distribuidorID!,
+          //photoURL: _selectedImage,
+          password: _password!,
+          location: _selectedLocation ??
+              const LatLng(48.858844, 2.294351), // Torre Eiffel (por defecto)
+        );
+
+        if (result) {
+          await authService.registerUser(_email!, _password!);
+          AnimatedAlert.show(
+            // ignore: use_build_context_synchronously
+            context,
+            'Registro Exitoso',
+            'El cliente se registró satisfactoriamente.',
+            type: AnimatedAlertType.success,
+            actionLabel: 'Continuar',
+            action: () {
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+          );
+        } else {
+          AnimatedAlert.show(
+            // ignore: use_build_context_synchronously
+            context,
+            'Error',
+            'No se pudo completar el registro.',
+          );
+        }
+      } catch (e) {
+        AnimatedAlert.show(
+          // ignore: use_build_context_synchronously
+          context,
+          'Error',
+          e.toString(),
+        );
+      }
+    }
   }
 
   // Widget para construir los espacios de texto

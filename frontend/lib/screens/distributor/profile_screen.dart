@@ -29,12 +29,14 @@ class _ProfileDistributorScreenState extends State<ProfileDistributorScreen> {
 
   final ImagePicker _picker = ImagePicker();
 
+//Cosntructor de pagina de incio
   @override
   void initState() {
     super.initState();
     _distributorData = distributorService.getDistributorByEmail();
   }
 
+//COnstructor de incio de página
   @override
   Widget build(BuildContext context) {
     final bool isWideScreen = MediaQuery.of(context).size.width > 600;
@@ -182,6 +184,7 @@ class _ProfileDistributorScreenState extends State<ProfileDistributorScreen> {
     );
   }
 
+//Imágenes
   void _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
@@ -197,6 +200,7 @@ class _ProfileDistributorScreenState extends State<ProfileDistributorScreen> {
     }
   }
 
+//Guardar cambios
   void _saveChanges() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();

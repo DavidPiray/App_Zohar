@@ -22,16 +22,18 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
   Map<String, dynamic>? _data;
   final DashboardService dashboardService = DashboardService();
 
+//Constructor de incio de página
   @override
   void initState() {
     super.initState();
     _loadDistributorID();
   }
 
+//constructor de incio de página
   @override
   Widget build(BuildContext context) {
     return Wrapper(
-      userRole: "distribuidor", // 🔹 PASA EL ROL DEL USUARIO
+      userRole: "distribuidor", // PASA EL ROL DEL USUARIO
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Card(
@@ -80,7 +82,7 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
     );
   }
 
-  // 🔹 Cargar distribuidorID desde SharedPreferences
+  // Cargar distribuidorID desde SharedPreferences
   Future<void> _loadDistributorID() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -89,7 +91,7 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
     _fetchSalesReport(); // Cargar datos al inicio
   }
 
-  // 🔹 Obtener datos del backend según filtro seleccionado
+  //Obtener datos del backend según filtro seleccionado
   Future<void> _fetchSalesReport() async {
     setState(() {
       _loading = true;
@@ -129,13 +131,13 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
     });
   }
 
-  // 🔹 Construcción de los Filtros
+  // Construcción de los Filtros
   Widget _buildFilters() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14.0),
       child: Row(
         children: [
-          // 🔹 Selector de Filtro (Día, Semana, Mes, Año)
+          //  Selector de Filtro (Día, Semana, Mes, Año)
           DropdownButton<String>(
             value: _selectedFilter,
             onChanged: (value) {
@@ -154,7 +156,7 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
 
           const SizedBox(width: 8),
 
-          // 🔹 Selector de Fecha
+          // Selector de Fecha
           IconButton(
             icon: const Icon(Icons.calendar_today),
             onPressed: () async {
@@ -175,7 +177,7 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
 
           const Spacer(),
 
-          // 🔹 Botón de "Limpiar Filtros"
+          // Botón de "Limpiar Filtros"
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -191,7 +193,7 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
     );
   }
 
-  // 🔹 Tarjeta de resumen
+  // Tarjeta de resumen
   Widget _buildSummaryCard(String title, dynamic value) {
     return Card(
       elevation: 4,
@@ -216,7 +218,7 @@ class _DistributorDashboardState extends State<DistributorDashboard> {
     );
   }
 
-  // 🔹 Gráfico de Ventas
+  // Gráfico de Ventas
   Widget _buildSalesChart(dynamic salesData) {
     if (salesData is! List || salesData.isEmpty) {
       return const Center(child: Text("No hay datos para mostrar"));

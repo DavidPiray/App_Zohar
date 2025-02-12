@@ -21,7 +21,6 @@ class MenuItems {
         'icon': Icons.history,
         'route': '/historial-cliente'
       },
-      {'title': 'Pedidos', 'icon': Icons.list, 'route': '/pedidos-cliente'},
       {
         'title': 'Configuraciones',
         'icon': Icons.settings,

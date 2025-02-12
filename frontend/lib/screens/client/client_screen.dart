@@ -26,14 +26,14 @@ class _ClientScreenState extends State<ClientScreen> {
   final OrdersService ordersService = OrdersService();
   final RealtimeService realtimeService = RealtimeService();
   final ClientService clientService = ClientService();
+
   final ScrollController _scrollController = ScrollController();
+  // Variables globales
   late Future<List<dynamic>> _products;
   late Stream<DatabaseEvent> _realtimeStream;
   List<String> previousInProgressOrders = [];
   LatLng? _distributorPosition;
   String? _currentOrderId;
-
-  // Variables Globales de la pantalla
   double _total = 0.0; // Precio total del pedido
   int currentOrderIndex = 0; // Índice para la paginación de pedidos en progreso
   Map<String, int> selectedQuantities = {};
@@ -49,13 +49,66 @@ class _ClientScreenState extends State<ClientScreen> {
     _listenToDistributorLocation(); // escucha la ubicación en tiempo real
   }
 
+  // Constructor de la Página Inicial
+  @override
+  Widget build(BuildContext context) {
+    return Wrapper(
+      userRole: "cliente",
+      floatingActionButton: FloatingActionButton(
+        onPressed: _buyProducts,
+        child: const Icon(Icons.shopping_cart),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Card(
+          elevation: 5,
+          color: AppColors.back,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height *
+                  0.8, //  Limita la altura del Card
+            ),
+            child: SingleChildScrollView(
+              //  Activa scroll solo dentro del Card
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    if (inProgressOrders.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: _buildInProgressOrderCard(),
+                      ),
+
+                    const Text(
+                      "Productos Disponibles",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    _buildProductList(), //  Productos con scroll dentro del Card
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // Escucha la ubicación en tiempo real
   void _listenToDistributorLocation([String? orderId]) {
     if (orderId == null) return;
     Stream<DatabaseEvent> distributorLocationStream =
         realtimeService.listenToDistributorLocation(
-            orderId); // 🔹 Escucha la ubicación en tiempo real
-
+            orderId); // Escucha la ubicación en tiempo real
     distributorLocationStream.listen((event) {
       final data = event.snapshot.value;
       if (data != null && data is Map<dynamic, dynamic>) {
@@ -65,7 +118,6 @@ class _ClientScreenState extends State<ClientScreen> {
             data['longitude'] as double,
           );
         });
-        print("📌 Nueva ubicación del distribuidor: $_distributorPosition");
       }
     });
   }
@@ -100,7 +152,7 @@ class _ClientScreenState extends State<ClientScreen> {
           inProgressOrders = pedidosEnProgreso;
           if (inProgressOrders.isNotEmpty) {
             _currentOrderId =
-                inProgressOrders.first['id_pedido']; // ✅ Guarda el ID
+                inProgressOrders.first['id_pedido']; // Guarda el ID
             _listenToDistributorLocation(_currentOrderId!);
             previousInProgressOrders = currentInProgressOrders;
           }
@@ -137,6 +189,7 @@ class _ClientScreenState extends State<ClientScreen> {
     });
   }
 
+  //
   @override
   void dispose() {
     _scrollController.dispose();
@@ -271,65 +324,13 @@ class _ClientScreenState extends State<ClientScreen> {
     }
   }
 
+  // Mapeo de colores según estado
   Map<String, Color> statusColors = {
     'pendiente': Colors.grey,
     'en progreso': Colors.amber,
     'completado': Colors.green,
     'cancelado': Colors.red,
   };
-  // Constructor de la Página Inicial
-  @override
-  Widget build(BuildContext context) {
-    return Wrapper(
-      userRole: "cliente",
-      floatingActionButton: FloatingActionButton(
-        onPressed: _buyProducts,
-        child: const Icon(Icons.shopping_cart),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Card(
-          elevation: 5,
-          color: AppColors.back,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height *
-                  0.8, // 🔹 Limita la altura del Card
-            ),
-            child: SingleChildScrollView(
-              // 🔹 Activa scroll solo dentro del Card
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    if (inProgressOrders.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: _buildInProgressOrderCard(),
-                      ),
-
-                    const Text(
-                      "Productos Disponibles",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    _buildProductList(), // ✅ Productos con scroll dentro del Card
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   // Lista de Productos
   Widget _buildProductList() {
@@ -347,7 +348,7 @@ class _ClientScreenState extends State<ClientScreen> {
 
           return ConstrainedBox(
             constraints: const BoxConstraints(
-              maxHeight: 400, // 🔹 Scroll solo dentro del Card
+              maxHeight: 400, // Scroll solo dentro del Card
             ),
             child: Scrollbar(
               thumbVisibility: true,
@@ -357,7 +358,7 @@ class _ClientScreenState extends State<ClientScreen> {
                     double screenWidth = constraints.maxWidth;
                     int crossAxisCount = (screenWidth / 220)
                         .floor()
-                        .clamp(1, products.length); // 🔹 Evita columnas vacías
+                        .clamp(1, products.length); // Evita columnas vacías
 
                     return Align(
                       alignment: Alignment.center,
@@ -390,9 +391,9 @@ class _ClientScreenState extends State<ClientScreen> {
                               padding: const EdgeInsets.all(12.0),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment
-                                    .center, // ✅ Centra el contenido verticalmente
+                                    .center, // Centra el contenido verticalmente
                                 crossAxisAlignment: CrossAxisAlignment
-                                    .center, // ✅ Centra el texto e iconos
+                                    .center, // Centra el texto e iconos
                                 children: [
                                   const Icon(Icons.local_drink,
                                       size: 60, color: Colors.blueAccent),
@@ -464,7 +465,7 @@ class _ClientScreenState extends State<ClientScreen> {
     );
   }
 
-  // 📌 Tarjeta de Pedido en Progreso Mejorada
+  // Tarjeta de Pedido en Progreso Mejorada
   Widget _buildInProgressOrderCard() {
     if (inProgressOrders.isEmpty) return const SizedBox.shrink();
 
@@ -472,9 +473,9 @@ class _ClientScreenState extends State<ClientScreen> {
       constraints: const BoxConstraints(maxHeight: 300),
       child: Scrollbar(
         thumbVisibility: true,
-        controller: _scrollController, // ✅ Asociar ScrollController
+        controller: _scrollController, //  Asociar ScrollController
         child: SingleChildScrollView(
-          controller: _scrollController, // ✅ Vincular con el ScrollView
+          controller: _scrollController, // Vincular con el ScrollView
           child: Column(
             children: inProgressOrders.map((order) {
               final String orderId = order['id_pedido'] ?? 'Sin ID';
@@ -499,7 +500,7 @@ class _ClientScreenState extends State<ClientScreen> {
                   trailing: IconButton(
                       icon: const Icon(Icons.map, color: Colors.blue),
                       onPressed: () {
-                        // 🔹 Mostrar un diálogo de carga mientras obtenemos las ubicaciones
+                        // Mostrar un diálogo de carga mientras obtenemos las ubicaciones
                         showDialog(
                           context: context,
                           barrierDismissible: false,
@@ -540,7 +541,7 @@ class _ClientScreenState extends State<ClientScreen> {
                                 WidgetsBinding.instance
                                     .addPostFrameCallback((_) {
                                   Navigator.pop(
-                                      context); // 🔹 Cerrar el diálogo de carga
+                                      context); // Cerrar el diálogo de carga
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -585,39 +586,29 @@ class _ClientScreenState extends State<ClientScreen> {
     );
   }
 
+  // Función para obtener localización
   Future<LatLng?> _fetchLocations(String orderId) async {
-    print(
-        '📌 Buscando ubicación del distribuidor y del cliente para el pedido $orderId...');
-
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-        String? clientID = prefs.getString('clienteID');
+      String? clientID = prefs.getString('clienteID');
       // 🔹 Obtener la ubicación del cliente desde Firestore
       Map<String, dynamic>? clientLocation =
           await clientService.getCustomerLocation(clientID!);
-      print(
-          '📌 Datos obtenidos $clientID de Firestore para orderId $orderId: $clientLocation');
       if (clientLocation == null ||
           !clientLocation.containsKey('latitude') ||
           !clientLocation.containsKey('longitude')) {
-        print('❌ No se encontró la ubicación del cliente.');
         return null;
       }
-
       double lat = clientLocation['latitude'] as double;
       double lng = clientLocation['longitude'] as double;
       LatLng clientLatLng = LatLng(lat, lng);
 
-      print('✅ Cliente encontrado en: $clientLatLng');
-
-      // 🔹 Obtener la ubicación del distribuidor en tiempo real desde Firebase
+      //  Obtener la ubicación del distribuidor en tiempo real desde Firebase
       Stream<DatabaseEvent> distributorLocationStream =
           realtimeService.listenToDistributorLocation(orderId);
 
       distributorLocationStream.listen((event) {
         final data = event.snapshot.value;
-        print('📡 Datos de ubicación del distribuidor en Firebase: $data');
-
         if (data != null && data is Map<dynamic, dynamic>) {
           setState(() {
             _distributorPosition = LatLng(
@@ -628,9 +619,8 @@ class _ClientScreenState extends State<ClientScreen> {
         }
       });
 
-      return clientLatLng; // 🔹 Retorna la ubicación del cliente
+      return clientLatLng; // Retorna la ubicación del cliente
     } catch (e) {
-      print('❌ Error al obtener las ubicaciones: $e');
       return null;
     }
   }
