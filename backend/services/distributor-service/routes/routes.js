@@ -6,7 +6,7 @@ const auditLogger = require('../shared/middlewares/auditLogger');
 const router = express.Router();
 
 // Crear un distribuidor
-router.post('/', auditLogger('Crear Distribuidor', 'distribuidor'), [authMiddleware, authorize(['admin'])], DistributorController.create);
+router.post('/', auditLogger('Crear Distribuidor', 'distribuidor'), [authMiddleware, authorize(['admin','gerente'])], DistributorController.create);
 
 // Añadir un producto al inventario de un distribuidor
 router.post('/inventario/:id_distribuidor',[authMiddleware, authorize(['admin','gerente','distribuidor'])], DistributorController.addProductToInventory);

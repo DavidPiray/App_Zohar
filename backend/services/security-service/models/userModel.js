@@ -31,6 +31,27 @@ const User = {
     return { message: 'Contraseña actualizada correctamente!' };
   },
 
+  async deleteDistributor(id_distribuidor) {
+    const distributorRef = db.collection('distribuidor').doc(id_distribuidor);
+    const userRef = db.collection('users').doc(id_distribuidor);
+
+    try {
+      // Verificar si existe el distribuidor antes de eliminarlo
+      const distributorSnapshot = await distributorRef.get();
+      if (!distributorSnapshot.exists) {
+        return { error: 'Distribuidor no encontrado' };
+      }
+
+      // Eliminar de ambas colecciones
+      await distributorRef.delete();
+      await userRef.delete();
+
+      return { message: 'Distribuidor eliminado correctamente' };
+    } catch (error) {
+      console.error('Error al eliminar distribuidor:', error.message);
+      return { error: 'Error al eliminar distribuidor: ' + error.message };
+    }
+  }
 };
 
 module.exports = User;

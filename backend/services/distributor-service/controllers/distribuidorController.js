@@ -97,7 +97,7 @@ const DistributorController = {
         'Distribuidor',
         response.id,
         req.user.email,
-        { newValue: distributor }
+        { newValue: response }
       );
       res.status(201).json(response);
     } catch (error) {
@@ -172,7 +172,6 @@ const DistributorController = {
         'Distribuidor',
         req.params.id,
         req.user.email,
-        { oldValue: oldData }
       );
       res.status(200).json(response);
     } catch (error) {

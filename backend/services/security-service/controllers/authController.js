@@ -4,6 +4,7 @@ const User = require('../models/userModel');
 const { registerSchema, loginSchema, updatePasswordSchema } = require('../validations/authValidation');
 
 const AuthController = {
+  // Registro de usuarios
   async register(req, res) {
     const { email, password, roles } = req.body;
 
@@ -23,6 +24,7 @@ const AuthController = {
     }
   },
 
+  // Inicio de sesion de usuarios
   async login(req, res) {
     const { email, password } = req.body;
 
@@ -49,6 +51,7 @@ const AuthController = {
     }
   },
 
+  // Actualizacion de contraseña
   async updatePassword(req, res) {
     const { oldPassword, newPassword, email } = req.body;
     if (!email) {
@@ -80,6 +83,21 @@ const AuthController = {
       return res.status(500).json({ error: 'Fallo al actualizar la contraseña' });
     }
   },
+
+  async delete(req, res) {
+    const { id_distribuidor } = req.params; 
+
+    try {
+      const response = await User.deleteDistributor(id_distribuidor);
+      if (response.error) {
+        return res.status(404).json({ error: response.error });
+      }
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error('Fallo al eliminar distribuidor:', error.message);
+      return res.status(500).json({ error: 'Fallo al eliminar distribuidor: ' + error.message });
+    }
+  }
 };
 
 module.exports = AuthController;
