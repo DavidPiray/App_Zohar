@@ -94,7 +94,8 @@ class OrdersService {
 
   // Listener
   // Método para actualizar estado del pedido
-  Future<void> updateOrderStatus(String orderId, String status) async {
+  Future<Map<String, dynamic>> updateOrderStatus(
+      String orderId, String status) async {
     try {
       // Envía el estado dentro de un objeto JSON
       final response = await _dio.put(
@@ -106,6 +107,7 @@ class OrdersService {
         throw Exception(
             'Error al actualizar el estado del pedido: ${response.data}');
       }
+      return response.data;
     } catch (error) {
       throw Exception('Error al actualizar el estado del pedido: $error');
     }

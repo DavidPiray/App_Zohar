@@ -159,7 +159,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
         return;
       }
       String newStatus = _isActive ? 'inactivo' : 'activo';
-       print("🔄 Cambiando estado del distribuidor a: $newStatus");
+      print("🔄 Cambiando estado del distribuidor a: $newStatus");
       // Actualizar en Firestore
       await distributorService.updateDistributorStatus(
           distributorId!, newStatus);
@@ -315,15 +315,28 @@ class _DistributorScreenState extends State<DistributorScreen> {
     try {
       String? nextStatus = orderStatuses[currentStatus];
       if (nextStatus == null) return;
-      await ordersService.updateOrderStatus(
-          orderId, nextStatus); // Actualiza el estado en Firestore
+
+      // ✅ Esperar la respuesta de la API
+      final Map<String, dynamic> response =
+          await ordersService.updateOrderStatus(orderId, nextStatus);
+
+      // ✅ Verificar si la respuesta tiene un warning
+      if (response.containsKey('warning')) {
+        String mensajeWarning = response['warning'];
+        AnimatedAlert.show(
+          context,
+          'Advertencia',
+          mensajeWarning,
+          type: AnimatedAlertType.info, // Usar un tipo válido
+        );
+      }
+
       if (nextStatus == "en progreso") {
         // Obtener la ubicación del cliente desde Firestore
         Map<String, dynamic>? clientLocation =
             await clientService.getCustomerLocation(customerId);
         if (clientLocation == null) {
           AnimatedAlert.show(
-            // ignore: use_build_context_synchronously
             context,
             'Error',
             'No se encontró la ubicación del cliente.',
@@ -331,13 +344,16 @@ class _DistributorScreenState extends State<DistributorScreen> {
           );
           return;
         }
+
         _clientPosition = LatLng(clientLocation['latitude'] as double,
             clientLocation['longitude'] as double);
+
         // Obtener la ubicación del distribuidor
         Position distributorLocation =
             await locationService.getCurrentLocation();
         _distributorPosition =
             LatLng(distributorLocation.latitude, distributorLocation.longitude);
+
         // Guardar ubicación inicial en Firebase Realtime Database
         await realtimeService.saveDistributorLocation(orderId,
             distributorLocation.latitude, distributorLocation.longitude);
@@ -355,20 +371,19 @@ class _DistributorScreenState extends State<DistributorScreen> {
         // Eliminar ubicación del distribuidor en Firebase
         await realtimeService.removeDistributorLocation(orderId);
       }
+
       AnimatedAlert.show(
-        // ignore: use_build_context_synchronously
         context,
         'Éxito',
         'El pedido se ha actualizado a "$nextStatus".',
         type: AnimatedAlertType.success,
       );
       _fetchOrders();
-    } catch (error) {
+    } catch (e) {
       AnimatedAlert.show(
-        // ignore: use_build_context_synchronously
         context,
         'Error',
-        'No se pudo actualizar el pedido: $error',
+        'No se pudo actualizar el pedido: $e',
         type: AnimatedAlertType.error,
       );
     }
@@ -672,5 +687,4 @@ class _DistributorScreenState extends State<DistributorScreen> {
   }
 
   // Modal para ver los detalles del pedido
-  
 }
