@@ -62,7 +62,7 @@ class OrdersService {
         .format(date); // Cambia el formato según tu preferencia
   }
 
-  // 🔹 Obtener pedidos filtrados por día, semana, mes o año
+  // Obtener pedidos filtrados por día, semana, mes o año
   Future<List<dynamic>> getOrdersByFilter(String filter, DateTime date) async {
     final year = date.year;
     final month = date.month.toString().padLeft(2, '0');

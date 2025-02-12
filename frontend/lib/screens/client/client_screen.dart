@@ -124,7 +124,13 @@ class _ClientScreenState extends State<ClientScreen> {
   }
 
   // Escucha cambios en los pedidos en Firebase
-  void _listenToRealtimeUpdates() {
+  Future<void> _listenToRealtimeUpdates() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? clienteID = prefs.getString('clienteID');
+    print('cliente: $clienteID');
+    if (clienteID == null) {
+      return;
+    }
     _realtimeStream = realtimeService.listenToOrders();
     _realtimeStream.listen((event) {
       final data = event.snapshot.value;
@@ -135,8 +141,10 @@ class _ClientScreenState extends State<ClientScreen> {
             .where((entry) =>
                 entry.value is Map &&
                 entry.value.containsKey('estado') &&
+                entry.value.containsKey('clienteID') &&
                 entry.value['estado'].toString().trim().toLowerCase() ==
-                    'en progreso')
+                    'en progreso' &&
+                entry.value['clienteID'].toString() == clienteID)
             .map((entry) => entry.value)
             .toList();
 
@@ -353,6 +361,7 @@ class _ClientScreenState extends State<ClientScreen> {
             ),
             child: Scrollbar(
               thumbVisibility: true,
+              controller: _scrollController,
               child: SingleChildScrollView(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -407,7 +416,7 @@ class _ClientScreenState extends State<ClientScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'Precio: \$${productPrice.toStringAsFixed(2)}',
+                                    'Precio: \$${(productPrice ?? 0.0).toStringAsFixed(2)}',
                                     style: const TextStyle(
                                       fontSize: 14,
                                       color: Colors.grey,

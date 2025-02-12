@@ -120,7 +120,7 @@ class _LocationPickerState extends State<LocationPicker> {
                           prefixIcon: IconButton(
                             icon: const Icon(Icons.search),
                             onPressed:
-                                _performSearch, // 🔍 Buscar al hacer clic en el ícono
+                                _performSearch, // Buscar al hacer clic en el ícono
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -128,7 +128,7 @@ class _LocationPickerState extends State<LocationPicker> {
                         ),
                         onChanged: _onSearchChanged,
                         onSubmitted: (_) =>
-                            _performSearch(), // 🔍 Buscar al presionar "Enter"
+                            _performSearch(), //  Buscar al presionar "Enter"
                       ),
                     ),
                     const SizedBox(width: 8),

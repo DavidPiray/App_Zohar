@@ -154,7 +154,12 @@ class _DistributorScreenState extends State<DistributorScreen> {
   // Funcion para cambiar el estado
   void _toggleDistributorStatus() async {
     try {
+      if (distributorId == null) {
+        print("⚠ Error: No se encontró el ID del distribuidor.");
+        return;
+      }
       String newStatus = _isActive ? 'inactivo' : 'activo';
+       print("🔄 Cambiando estado del distribuidor a: $newStatus");
       // Actualizar en Firestore
       await distributorService.updateDistributorStatus(
           distributorId!, newStatus);
@@ -165,12 +170,12 @@ class _DistributorScreenState extends State<DistributorScreen> {
             distributorId!, position.latitude, position.longitude);
         // Escuchar cambios en la ubicación y actualizar Firebase
         Geolocator.getPositionStream().listen((Position newPosition) {
-          realtimeService.updateDistributorLocation(
+          realtimeService.updateDistributorPosition(
               distributorId!, newPosition.latitude, newPosition.longitude);
         });
       } else {
         // Si se desactiva, eliminar la ubicación del distribuidor en Realtime Database
-        await realtimeService.removeDistributorLocation(distributorId!);
+        await realtimeService.removeDistributorPosition(distributorId!);
       }
       setState(() {
         _isActive = !_isActive;
@@ -628,10 +633,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
                 activeColor: Colors.green,
                 inactiveThumbColor: Colors.red,
               ),
-              Text(
-                _isActive ? "Activo" : "Inactivo",
-                style: TextStyle(color: _isActive ? Colors.green : Colors.red),
-              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -669,4 +670,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
       ],
     );
   }
+
+  // Modal para ver los detalles del pedido
+  
 }
