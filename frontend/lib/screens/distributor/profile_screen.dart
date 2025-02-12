@@ -213,7 +213,7 @@ class _ProfileDistributorScreenState extends State<ProfileDistributorScreen> {
               'No se encontró el ID del distribuidor en la sesión.');
         }
         final success = await distributorService.updateDistributor(
-          idDistribuidor:
+          id_distribuidor:
               idDistribuidor, // Reemplaza con el ID real del cliente
           name: _name!,
           phone: _phone!,

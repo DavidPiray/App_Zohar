@@ -56,10 +56,8 @@ class AuthProvider with ChangeNotifier {
         // Para guardar los datos escenciales del cliente
         final clientData = await ClientService().getClientData();
         await prefs.setString('clienteID', clientData['id_cliente']);
-        print("Data: $clientData['id_cliente']");
 
         await prefs.setString('distribuidorID', clientData['distribuidorID']);
-        print("Data: $clientData['distribuidorID']");
       } else if (role == 'distribuidor') {
         // ignore: use_build_context_synchronously
         Navigator.pushReplacementNamed(context, '/distribuidor');
@@ -69,7 +67,7 @@ class AuthProvider with ChangeNotifier {
             await DistributorService().getDistributorByEmail();
         await prefs.setString(
             'DistribuidorID', distribuidorData['id_distribuidor']);
-      } else if (role == 'director') {
+      } else if (role == 'gerente') {
         // ignore: use_build_context_synchronously
         Navigator.pushReplacementNamed(context, '/gerente');
       } else {

@@ -6,6 +6,7 @@ import 'package:frontend/services/product_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/styles/colors.dart';
 import '../../services/distributor_service.dart';
 import '../../services/orders_service.dart';
@@ -24,6 +25,7 @@ class DistributorScreen extends StatefulWidget {
 
 //Variables de servicio
 class _DistributorScreenState extends State<DistributorScreen> {
+  // Variables para los servicios
   final DistributorService distributorService = DistributorService();
   final ClientService clientService = ClientService();
   final OrdersService ordersService = OrdersService();
@@ -31,21 +33,30 @@ class _DistributorScreenState extends State<DistributorScreen> {
   final AuthService authService = AuthService();
   final RealtimeService realtimeService = RealtimeService();
   final LocationService locationService = LocationService();
-
+  // Variables globales
   // ignore: unused_field
   LatLng? _distributorPosition;
   // ignore: unused_field
   LatLng? _clientPosition;
-
-  late Future<List<dynamic>> _orders;
+  Future<List<dynamic>>? _orders;
+  // ignore: unused_field
   late Future<List<dynamic>> _products;
   late Stream<DatabaseEvent> _realtimeStream;
+  bool _isActive = false; // Estado actual del distribuidor
+  // Filtros
+  String selectedStatus = 'todos';
+  DateTime? selectedDate;
+  String? selectedProduct;
+  String? distributorId;
+  bool isSidebarVisible = true;
 
   Map<String, String> orderStatuses = {
     'pendiente': 'en progreso',
     'en progreso': 'completado'
   };
-
+  // Paginación
+  int currentPage = 1;
+  final int itemsPerPage = 5;
   //Mapeo de colores
   Map<String, Color> statusColors = {
     'pendiente': Colors.grey,
@@ -53,25 +64,25 @@ class _DistributorScreenState extends State<DistributorScreen> {
     'completado': Colors.green,
     'cancelado': Colors.red,
   };
-  String distributorId = "dist1"; // Distribuidor asignado (temporal)
-  bool isSidebarVisible = true;
-
-  // Filtros
-  String selectedStatus = 'todos';
-  DateTime? selectedDate;
-  String? selectedProduct;
-
-  // Paginación
-  int currentPage = 1;
-  final int itemsPerPage = 5;
 
   // Constructor -> Inicio de página
   @override
   void initState() {
     super.initState();
-    _fetchOrders();
-    _fetchProducts();
-    _listenToRealtimeUpdates();
+    _initializeDistributor();
+  }
+
+// 🟢 Nueva función para esperar la carga del ID antes de hacer otras llamadas
+  Future<void> _initializeDistributor() async {
+    await _loadDistributorId(); // Esperar a obtener el ID
+    if (distributorId != null) {
+      _loadDistributorStatus();
+      _fetchOrders();
+      _fetchProducts();
+      _listenToRealtimeUpdates();
+    } else {
+      print("Error: No se pudo obtener el ID del distribuidor.");
+    }
   }
 
 //Constructor de la página de incio
@@ -117,11 +128,78 @@ class _DistributorScreenState extends State<DistributorScreen> {
     );
   }
 
+  // Cargar ID del distribuidor desde SharedPreferences
+  Future<void> _loadDistributorId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      distributorId = prefs.getString('DistribuidorID');
+    });
+  }
+
+  // Obtener el estado
+  void _loadDistributorStatus() async {
+    if (distributorId == null) {
+      return;
+    }
+    final distributorData =
+        await distributorService.getDistributorData(distributorId!);
+
+    if (distributorData.containsKey('estado')) {
+      setState(() {
+        _isActive = distributorData['estado'] == 'activo';
+      });
+    }
+  }
+
+  // Funcion para cambiar el estado
+  void _toggleDistributorStatus() async {
+    try {
+      String newStatus = _isActive ? 'inactivo' : 'activo';
+      // Actualizar en Firestore
+      await distributorService.updateDistributorStatus(
+          distributorId!, newStatus);
+      // Si se activa, guardar ubicación en Firebase Realtime
+      if (newStatus == 'activo') {
+        Position position = await locationService.getCurrentLocation();
+        await realtimeService.saveDistributorPosition(
+            distributorId!, position.latitude, position.longitude);
+        // Escuchar cambios en la ubicación y actualizar Firebase
+        Geolocator.getPositionStream().listen((Position newPosition) {
+          realtimeService.updateDistributorLocation(
+              distributorId!, newPosition.latitude, newPosition.longitude);
+        });
+      } else {
+        // Si se desactiva, eliminar la ubicación del distribuidor en Realtime Database
+        await realtimeService.removeDistributorLocation(distributorId!);
+      }
+      setState(() {
+        _isActive = !_isActive;
+      });
+      AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
+        context,
+        'Éxito',
+        'Tu estado ha cambiado a $newStatus.',
+        type: AnimatedAlertType.success,
+      );
+    } catch (error) {
+      AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
+        context,
+        'Error',
+        'No se pudo actualizar el estado: $error',
+        type: AnimatedAlertType.error,
+      );
+    }
+  }
+
   // Para obtener los pedidos
   void _fetchOrders() {
-    setState(() {
-      _orders = distributorService.getOrdersByDistributor(distributorId);
-    });
+    if (distributorId != null) {
+      setState(() {
+        _orders = distributorService.getOrdersByDistributor(distributorId!);
+      });
+    }
   }
 
   // Para obtener los productos
@@ -145,7 +223,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
   // Para los filtros
   List<dynamic> _filterAndSortOrders(List<dynamic> orders) {
     orders = orders.where((order) => order['estado'] != 'completado').toList();
-
     if (selectedStatus != 'todos') {
       orders =
           orders.where((order) => order['estado'] == selectedStatus).toList();
@@ -155,9 +232,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
           DateFormat('yyyy-MM-dd').format(selectedDate!);
       orders = orders.where((order) {
         final rawTimestamp = order['fechaCreacion'];
-
         if (rawTimestamp == null) return false;
-
         final DateTime orderDate = DateTime.fromMillisecondsSinceEpoch(
             rawTimestamp['_seconds'] * 1000);
 
@@ -171,7 +246,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
         return products.any((p) => p['id_producto'] == selectedProduct);
       }).toList();
     }
-
     orders.sort((a, b) => (b['fecha'] ?? '').compareTo(a['fecha'] ?? ''));
     return orders;
   }
@@ -186,54 +260,6 @@ class _DistributorScreenState extends State<DistributorScreen> {
     });
   }
 
-/*   void _updateOrderStatus(String orderId, String currentStatus,
-      Map<String, dynamic> clientLocation) async {
-    try {
-      String? nextStatus = orderStatuses[currentStatus];
-      if (nextStatus == null) return;
-      await ordersService.updateOrderStatus(orderId, nextStatus);
-      //
-      if (nextStatus == "en progreso") {
-        // Obtener la ubicación del distribuidor
-        Position distributorLocation =
-            await locationService.getCurrentLocation();
-        _distributorPosition =
-            LatLng(distributorLocation.latitude, distributorLocation.longitude);
-        print('Primero $distributorLocation');
-        print('Segundo $_distributorPosition');
-        // Obtener la ruta entre el distribuidor y el cliente
-        List<LatLng> route = await googleMapsService.getRoute(
-          origin: _distributorPosition!,
-          destination:
-              LatLng(clientLocation['latitude'], clientLocation['longitude']),
-        );
-        print('Cliente $clientLocation');
-//
-        setState(() {
-          _polylineCoordinates = route;
-          print('poli: $_polylineCoordinates');
-        });
-      }
-      AnimatedAlert.show(
-        // ignore: use_build_context_synchronously
-        context,
-        'Éxito',
-        'El pedido se ha actualizado a "$nextStatus".',
-        type: AnimatedAlertType.success,
-      );
-      _fetchOrders();
-    } catch (error) {
-      AnimatedAlert.show(
-        // ignore: use_build_context_synchronously
-        context,
-        'Error',
-        'No se pudo actualizar el pedido: $error',
-        type: AnimatedAlertType.error,
-      );
-    }
-  }
- */
-
   // Actualizar las ubicaciones
   Future<LatLng?> _updateLocation(String customerId, String orderId) async {
     Map<String, dynamic>? clientLocation =
@@ -243,6 +269,7 @@ class _DistributorScreenState extends State<DistributorScreen> {
         !clientLocation.containsKey('latitude') ||
         !clientLocation.containsKey('longitude')) {
       AnimatedAlert.show(
+        // ignore: use_build_context_synchronously
         context,
         'Error',
         'No se encontró la ubicación del cliente.',
@@ -353,6 +380,9 @@ class _DistributorScreenState extends State<DistributorScreen> {
             child: FutureBuilder<List<dynamic>>(
               future: _orders,
               builder: (context, snapshot) {
+                if (_orders == null) {
+                  return const Center(child: CircularProgressIndicator());
+                }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
@@ -585,6 +615,26 @@ class _DistributorScreenState extends State<DistributorScreen> {
             icon: const Icon(Icons.clear, color: Colors.red),
             onPressed: _clearFilters,
           ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                "Estado: ",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Switch(
+                value: _isActive,
+                onChanged: (value) => _toggleDistributorStatus(),
+                activeColor: Colors.green,
+                inactiveThumbColor: Colors.red,
+              ),
+              Text(
+                _isActive ? "Activo" : "Inactivo",
+                style: TextStyle(color: _isActive ? Colors.green : Colors.red),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
         ],
       ),
     );

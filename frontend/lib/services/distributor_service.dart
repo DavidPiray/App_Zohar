@@ -15,7 +15,8 @@ class DistributorService {
     try {
       final response = await _dioDist.post('/', data: distributor);
       if (response.statusCode != 201) {
-        throw Exception('Error al agregar distribuidor: ${response.statusMessage}');
+        throw Exception(
+            'Error al agregar distribuidor: ${response.statusMessage}');
       }
       try {
         // Preparar datos para mapear a "users"
@@ -58,8 +59,6 @@ class DistributorService {
           (distributor) => distributor['email'] == email,
           orElse: () => null,
         );
-        print(distributor);
-
         if (distributor == null) {
           throw Exception('Distribuidor no encontrado con el correo $email.');
         }
@@ -79,38 +78,28 @@ class DistributorService {
 
   // Actualizar distribuidor
   Future<bool> updateDistributor({
-    required String idDistribuidor, // ID único del cliente
-    required String name,
-    required String phone,
+    required String id_distribuidor, // ID único del cliente
+    String? name,
+    String? phone,
+    String? state,
     File? image, // Foto opcional
   }) async {
     try {
       // Datos a enviar
       final Map<String, dynamic> data = {
-        'nombre': name,
-        'celular': phone,
+        if (name != null) 'nombre': name,
+        if (phone != null) 'celular': phone,
+        if (state != null) 'estado': state,
       };
 
-      // Adjuntar la imagen si existe
-      if (image != null) {
-        String fileName = image.path.split('/').last;
-        final formData = FormData.fromMap({
-          ...data,
-          'photo': await MultipartFile.fromFile(image.path, filename: fileName),
-        });
-        data.clear();
-        data.addAll(formData.fields as Map<String, dynamic>);
-      }
-
       // Enviar solicitud PUT al servidor
-      final response = await _dioDist.put('/$idDistribuidor', data: data);
+      final response = await _dioDist.put('/$id_distribuidor', data: data);
 
       // Verificar respuesta del servidor
       if (response.statusCode == 200) {
         return true;
       } else {
-        throw Exception(
-            'Error al actualizar los datos del Distribuidor: ${response.data}');
+        throw Exception('Error en la actualización: ${response.data}');
       }
     } catch (error) {
       throw Exception('Error al actualizar datos del Distribuidor: $error');
@@ -120,7 +109,7 @@ class DistributorService {
   // Eliminar distribuidor
   Future<void> deleteDistributor(String id) async {
     try {
-      final response = await _dio.delete('/$id');
+      final response = await _dio2.delete('/$id');
       if (response.statusCode != 200) {
         throw Exception('Error al eliminar distribuidor: ${response.data}');
       }
@@ -172,4 +161,31 @@ class DistributorService {
       throw Exception('Error al obtener inventario del distribuidor: $error');
     }
   }
+
+  // Obtener datos de un distribuidor por ID
+  Future<Map<String, dynamic>> getDistributorData(String distributorId) async {
+    try {
+      final response = await _dioDist.get('/$distributorId');
+      if (response.statusCode == 200) {
+        return response.data;
+      } else {
+        throw Exception('Error al obtener datos del distribuidor: ${response.statusMessage}');
+      }
+    } catch (error) {
+      throw Exception('Error al obtener datos del distribuidor: $error');
+    }
+  }
+
+  // Actualizar el estado del distribuidor en Firestore
+  Future<void> updateDistributorStatus(String distributorId, String newStatus) async {
+    try {
+      final response = await _dioDist.put('/$distributorId', data: {'estado': newStatus});
+      if (response.statusCode != 200) {
+        throw Exception('Error al actualizar estado: ${response.statusMessage}');
+      }
+    } catch (error) {
+      throw Exception('Error al actualizar estado del distribuidor: $error');
+    }
+  }
+
 }

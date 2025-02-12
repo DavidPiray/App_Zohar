@@ -32,6 +32,7 @@ class _ClientScreenState extends State<ClientScreen> {
   late Future<List<dynamic>> _products;
   late Stream<DatabaseEvent> _realtimeStream;
   List<String> previousInProgressOrders = [];
+  // ignore: unused_field
   LatLng? _distributorPosition;
   String? _currentOrderId;
   double _total = 0.0; // Precio total del pedido
